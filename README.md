@@ -14,7 +14,7 @@ El hook `pre-commit` ejecuta `tools/guard_forbidden_files.py`, que rechaza ROMs,
 
 ## Prueba de humo del emulador
 
-`tools/smoke_emulator.py` comprueba las herramientas de emulador contra la ROM real, desde el reset hasta la pantalla del fotograma 600: que la ROM sea el dump verificado (tamaño y SHA-1 registrados en `docs/re/rom-identity.md`), cabecera y banco de arranque, una captura de 256x224 cuyos colores proceden todos de la CGRAM, estado idéntico en dos sesiones nuevas y una reproducción exacta tras `state.load`. Necesita [mesen-probe](https://github.com/louranveil/mesen-probe) instalado (preferiblemente en un entorno virtual) y las rutas indicadas por argumentos o variables:
+`tools/smoke_emulator.py` comprueba las herramientas de emulador contra la ROM real, desde el reset hasta la pantalla del fotograma 600: que la ROM sea el dump verificado (tamaño y SHA-1 registrados en `docs/re/rom-identity.md`), cabecera y banco de arranque, una captura de 256x224 cuyos colores proceden todos de la CGRAM, estado idéntico en dos sesiones nuevas y una reproducción exacta tras `state.load`. Necesita las rutas indicadas por argumentos o variables:
 
 ```sh
 export MESEN_FOR_AI_DIR=/ruta/a/mesen-for-ai/parcheado
@@ -41,7 +41,7 @@ python tools/build_relocation_probe.py --out /ruta/fuera/del/repositorio/probe.s
 
 `tools/script_format.py` implementa el formato (directorio, tablas, tokenizador con la tabla de argumentos de cada comando y su nivel de evidencia), `tools/script_builder.py` las escrituras seguras (registro, bytes esperados de la ROM original, sin solapes) y la reubicación de blobs. `build_relocation_probe.py` alarga el primer mensaje del intro, lo reubica en el relleno del banco `$E2` y repunta la tabla; es solo una prueba para el emulador y su resultado nunca se distribuye.
 
-`tools/probe_command_arity.py` mide con ejecución forzada en el emulador cuántos argumentos consume cada comando del motor de texto (necesita `mesen-probe`, `MESEN_BIN` y un savestate del intro, que no se guarda en el repositorio); sus resultados alimentan la tabla de `script_format.py`.
+`tools/probe_command_arity.py` mide con ejecución forzada en el emulador cuántos argumentos consume cada comando del motor de texto (necesita `MESEN_BIN` y un savestate del intro, que no se guarda en el repositorio); sus resultados alimentan la tabla de `script_format.py`.
 
 ## Tests
 
