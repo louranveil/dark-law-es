@@ -25,7 +25,7 @@ The text interpreter reads bytes through a long pointer in direct page `$1D`-`$1
 | `C3` | Line break inside text (handled by the text routine itself). |
 | `E5 nn` | Skips `nn` glyph slots (handled by the text routine itself). |
 
-Characters per window: 24 glyph slots (`$0A45` counts up to `0x18`).
+Glyph slots per window: 24, as two rows of 12 (`$0A45` counts up to `0x18`; slots 0-11 are the first row and 12-23 the second, see [latin-font-spike.md](latin-font-spike.md)). The `C3` command sets the slot to 12 in the window type `$0A4C = 1`, so it only works as a line break from the first row.
 
 **Which character each glyph is has not been decided yet.** The glyph indices are known and stable; the mapping to Unicode needs a table. A first attempt with template matching against MS Gothic gave scores of 0.6-0.8 without a clear winner (for example it confused `は` with `ぱ`), so the table needs human review. From the intro: `0A` is こ, `19` is の, `16` is に, `1A` is は, `FD CB FD 60` is 年前.
 
@@ -122,7 +122,7 @@ Status: **verified**.
 
 `tools/build_relocation_probe.py` takes message 0 of the table at `$E2:EE73` (the intro's `300年前・・・`, 79 bytes), inserts three `・` glyphs (`9E`) before its first `C8`, writes the 82-byte blob at `$E2:F8A6` and updates the 16-bit pointer at `$E2:EE73`. Only those two ranges differ from the original (checked by `tests/test_script_builder.py`).
 
-Booted from reset in MesenCE and driven with the same inputs (Start at the title, A at the menu), the original ROM shows `300年前・・・` in four captures between frames 1460 and 1620, and the probe ROM shows `300年前・・・・・・` with the sixth dot wrapped to the second row in the same four captures. In a separate run of the same route, after the first message the two ROMs reached identical screens at three later captures (about frames 1948, 2248, and 2548). This proves that the engine reads a blob from another place through the repointed table and that a longer text is accepted; it also shows that the line holds 11 glyphs and wraps on its own.
+Booted from reset in MesenCE and driven with the same inputs (Start at the title, A at the menu), the original ROM shows `300年前・・・` in four captures between frames 1460 and 1620, and the probe ROM shows `300年前・・・・・・` with the sixth dot wrapped to the second row in the same four captures. In a separate run of the same route, after the first message the two ROMs reached identical screens at three later captures (about frames 1948, 2248, and 2548). This proves that the engine reads a blob from another place through the repointed table and that a longer text is accepted; it also shows that the narration window wraps on its own after 12 glyph slots (the blob starts with two blank glyphs and `300年前` plus six dots makes 13, so the thirteenth, the sixth dot, goes to the second row). An earlier version of this file said 11 per line; the draw tables in [latin-font-spike.md](latin-font-spike.md) show 12.
 
 ## Open Items
 
@@ -131,5 +131,5 @@ Booted from reset in MesenCE and driven with the same inputs (Start at the title
 3. Find every reader of the pointer tables (code that builds addresses from immediates), and confirm that no code reads a blob by absolute address, before moving blobs for real.
 4. Verify free space with trap bytes across a long route; until then use only the ranges needed.
 5. Analyze the paths that draw other text (menus, items, battle, names).
-6. Design the Spanish font path: variable-width or half-width glyphs, line width budgets per window type (measured), and the change to the draw routine at `$D1:4630`-`$D1:46A3`, which assumes 2 tiles per glyph and 24 slots.
+6. Spanish font path: a fixed-width proof of concept works, see [latin-font-spike.md](latin-font-spike.md). Still open: a proportional-width path, measuring the other window types, and a real font.
 7. The forced-execution probe is `tools/probe_command_arity.py` and needs a savestate taken at the intro (the workspace `savestates/intro-300-years.mss` was used). The route from reset to the intro (620 frames, Start for 4 frames, 300 frames, A for 4 frames, 10 frames) and the read-watch traces used for this document were run from throwaway scripts and are not in the repository yet.
