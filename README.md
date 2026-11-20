@@ -14,7 +14,7 @@ El hook `pre-commit` ejecuta `tools/guard_forbidden_files.py`, que rechaza ROMs,
 
 ## Prueba de humo del emulador
 
-`tools/smoke_emulator.py` comprueba las herramientas de emulador contra la ROM real, desde el reset hasta la pantalla del fotograma 600: cabecera y banco de arranque, una captura de 256x224 cuyos colores proceden todos de la CGRAM, estado idéntico en dos sesiones nuevas y una reproducción exacta tras `state.load`. No fija ningún hash derivado de la ROM. Necesita [mesen-probe](https://github.com/louranveil/mesen-probe) instalado (preferiblemente en un entorno virtual) y las rutas indicadas por argumentos o variables:
+`tools/smoke_emulator.py` comprueba las herramientas de emulador contra la ROM real, desde el reset hasta la pantalla del fotograma 600: que la ROM sea el dump verificado (tamaño y SHA-1 registrados en `docs/re/rom-identity.md`), cabecera y banco de arranque, una captura de 256x224 cuyos colores proceden todos de la CGRAM, estado idéntico en dos sesiones nuevas y una reproducción exacta tras `state.load`. Necesita [mesen-probe](https://github.com/louranveil/mesen-probe) instalado (preferiblemente en un entorno virtual) y las rutas indicadas por argumentos o variables:
 
 ```sh
 export MESEN_FOR_AI_DIR=/ruta/a/mesen-for-ai/parcheado
