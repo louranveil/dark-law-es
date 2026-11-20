@@ -17,3 +17,7 @@ The `pre-commit` hook runs `tools/guard_forbidden_files.py`, which rejects stage
 ```sh
 python -m unittest discover -s tests -v
 ```
+
+## License
+
+The code, documentation, and translated text written in this repository are released under the MIT License; see [LICENSE](LICENSE). The license does not cover the game: *Dark Law: Meaning of Death* and its original text, graphics, and data belong to their rights holders, and no ROM or game data is distributed here, only patches.
