@@ -3,8 +3,9 @@
 
 Comprueba, con la ROM y Mesen reales, que la cadena de depuración funciona de
 extremo a extremo: arranque, captura, memoria de vídeo, determinismo entre
-sesiones nuevas y reproducción de savestates. No fija ningún hash derivado de la
-ROM: solo invariantes y coincidencias entre ejecuciones.
+sesiones nuevas y reproducción de savestates. Antes de nada exige que la ROM sea
+el dump verificado de No-Intro, cuyo tamaño y SHA-1 están registrados en
+docs/re/rom-identity.md; el resto son invariantes y coincidencias entre ejecuciones.
 
 La ROM se recibe con --rom o con la variable DARK_LAW_ROM, y Mesen con
 --mesen-bin o MESEN_BIN. Requiere el paquete mesen_probe instalado y
@@ -37,6 +38,10 @@ SCREEN_WIDTH = 256
 SCREEN_HEIGHT = 224
 HIROM_FIRST_BANK = 0xC0  # el código de Dark Law corre en los bancos C0-FF
 COPIER_HEADER_REMAINDER = 512  # tamaño % 1024 == 512 indica cabecera de copiador
+
+# Identidad del dump verificado (ver docs/re/rom-identity.md; un test impide que diverjan).
+EXPECTED_ROM_SIZE = 4194304
+EXPECTED_ROM_SHA1 = "A4312636BFAC45A21B3E2F4475E5DB622E9FC0E3"
 
 ToolCaller = Callable[..., dict]
 
@@ -176,6 +181,36 @@ def boot_snapshot(rom: Path, mesen_bin: str, workdir: Path, frames: int, name: s
         return take_snapshot(call, workdir, name), rom_info
 
 
+def file_sha1(path: Path) -> str:
+    digest = hashlib.sha1()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest().upper()
+
+
+def check_identity(
+    rom: Path, rom_info: dict, expected_sha1: str = EXPECTED_ROM_SHA1, expected_size: int = EXPECTED_ROM_SIZE
+) -> Check:
+    """La ROM debe ser el dump verificado, y Mesen debe ver el mismo SHA-1 que el calculado sobre el fichero."""
+    size = rom.stat().st_size
+    local = file_sha1(rom)
+    mesen = str(rom_info.get("fileSha1Hash", "")).upper()
+    problems = []
+    if size != expected_size:
+        problems.append(f"size is {size} bytes instead of {expected_size}")
+    if local != expected_sha1.upper():
+        problems.append(f"SHA-1 is {local} instead of {expected_sha1.upper()}")
+    if mesen != local:
+        problems.append(f"Mesen reports SHA-1 {mesen or 'nothing'}, which differs from the file")
+    detail = (
+        f"SHA-1 {local} and {size} bytes: the verified No-Intro dump (docs/re/rom-identity.md)"
+        if not problems
+        else "; ".join(problems)
+    )
+    return Check("rom_is_the_verified_dump", not problems, detail)
+
+
 def check_boot(rom: Path, snapshot: Snapshot, rom_info: dict) -> list[Check]:
     size = rom.stat().st_size
     return [
@@ -244,6 +279,7 @@ def run_smoke(rom: Path, mesen_bin: str, workdir: Path, frames: int = 600, repla
     checks: list[Check] = []
     try:
         first, rom_info = boot_snapshot(rom, mesen_bin, workdir, frames, "boot_a")
+        checks.append(check_identity(rom, rom_info))
         checks += check_boot(rom, first, rom_info)
         checks += check_capture(first)
         second, _ = boot_snapshot(rom, mesen_bin, workdir, frames, "boot_b")

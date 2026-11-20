@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import os
@@ -161,6 +162,55 @@ class BootCheckTests(unittest.TestCase):
         self.assertIn("ABC123", checks[0].detail)
 
 
+class IdentityCheckTests(unittest.TestCase):
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.rom = Path(directory.name) / "game.sfc"
+        self.rom.write_bytes(b"known content")
+        self.sha1 = hashlib.sha1(b"known content").hexdigest().upper()
+
+    def check(self, *, mesen: str | None = None, sha1: str | None = None, size: int = 13) -> smoke.Check:
+        info = {"fileSha1Hash": self.sha1 if mesen is None else mesen}
+        return smoke.check_identity(self.rom, info, expected_sha1=sha1 or self.sha1, expected_size=size)
+
+    def test_the_expected_file_seen_identically_by_mesen_passes(self) -> None:
+        result = self.check()
+
+        self.assertTrue(result.passed, result.detail)
+        self.assertIn(self.sha1, result.detail)
+
+    def test_comparison_ignores_the_case_of_the_hashes(self) -> None:
+        self.assertTrue(self.check(mesen=self.sha1.lower(), sha1=self.sha1.lower()).passed)
+
+    def test_a_different_file_fails_and_reports_both_hashes(self) -> None:
+        result = self.check(sha1="0" * 40)
+
+        self.assertFalse(result.passed)
+        self.assertIn(self.sha1, result.detail)
+        self.assertIn("0" * 40, result.detail)
+
+    def test_a_wrong_size_fails(self) -> None:
+        self.assertFalse(self.check(size=14).passed)
+
+    def test_mesen_reporting_another_hash_fails(self) -> None:
+        result = self.check(mesen="F" * 40)
+
+        self.assertFalse(result.passed)
+        self.assertIn("Mesen reports", result.detail)
+
+    def test_mesen_reporting_nothing_fails(self) -> None:
+        self.assertFalse(self.check(mesen="").passed)
+
+
+class PinnedIdentityTests(unittest.TestCase):
+    def test_the_constants_match_the_identity_document(self) -> None:
+        document = (REPO / "docs" / "re" / "rom-identity.md").read_text(encoding="utf-8")
+
+        self.assertIn(smoke.EXPECTED_ROM_SHA1, document)
+        self.assertIn(str(smoke.EXPECTED_ROM_SIZE), document)
+
+
 class AgreementCheckTests(unittest.TestCase):
     def test_identical_snapshots_agree(self) -> None:
         self.assertTrue(smoke.check_fresh_sessions_agree(snapshot(png=b"x"), snapshot(png=b"x")).passed)
@@ -231,7 +281,8 @@ class RealRomTests(unittest.TestCase):
 
         report = "\n".join(f"{'PASS' if c.passed else 'FAIL'} {c.name}: {c.detail}" for c in checks)
         self.assertTrue(checks and all(check.passed for check in checks), report)
-        self.assertEqual(len(checks), 7, report)
+        self.assertEqual(len(checks), 8, report)
+        self.assertEqual(checks[0].name, "rom_is_the_verified_dump", report)
 
 
 if __name__ == "__main__":
