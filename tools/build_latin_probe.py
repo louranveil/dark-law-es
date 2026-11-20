@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Construye una ROM de prueba que muestra texto latino de 8x16 en el intro, dos letras por celda.
+"""Construye una ROM de prueba que muestra texto latino de 8x16, dos letras por celda.
 
 Es el spike de la fuente en español (docs/re/latin-font-spike.md): instala el gancho de
 asm/latin_pair_hook.asm con asar, escribe una fuente latina en el relleno del banco $D2 y
-sustituye el mensaje 0 del intro (reubicado en el relleno del banco $E2) por texto que usa
-la ficha ``F9 a b``. La ROM resultante solo sirve para mirarla en el emulador y se escribe
-fuera del repositorio.
+sustituye un mensaje (reubicado en el relleno de su banco) por texto que usa la ficha
+``F9 a b``. Hay dos escenarios: ``intro`` (mensaje 0 del intro, ventana de tipo 1) y
+``field`` (primer mensaje del campo, ventana de tipo 2). La ROM resultante solo sirve para
+mirarla en el emulador y se escribe fuera del repositorio.
 
 La fuente se recibe como arte de texto con --font-art (ver ``parse_font_art``); el
 repositorio no incluye ninguna: la de las pruebas locales sale de una tipografía del
@@ -22,16 +23,17 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from script_builder import FreeSpace, PatchError, RomPatcher, relocate_blob
 from script_format import cpu_to_offset, read_all_tables, tokenize
 
 ASM_PATH = Path(__file__).resolve().parents[1] / "asm" / "latin_pair_hook.asm"
-TABLE_ADDRESS = 0xE2EE73
-MESSAGE_INDEX = 0
-MESSAGE_FREE = (0xE2F8A6, 0xE30000)
-HOOK_RANGE = (0xD14587, 0xD1458B)  # CMP #$E5 / BEQ: se sustituye por un JML
+HOOK_RANGES = (
+    (0xD14587, 0xD1458B),  # bucle 1: CMP #$E5 / BEQ, se sustituye por un JML
+    (0xD1477D, 0xD14781),  # bucle 2: igual
+)
 CODE_RANGE = (0xD2BB80, 0xD2C000)
 FONT_START = 0xD2C000
 FONT_END = 0xD30000
@@ -43,9 +45,32 @@ PIXEL_VALUES = {".": 0, "-": 1, "+": 2, "#": 3}
 
 # Índice de letra = posición en esta cadena. ASCII imprimible primero, para que índice = código - 0x20.
 LATIN_CHARS = "".join(chr(c) for c in range(0x20, 0x7F)) + "ñÑ¿¡áéíóúüÁÉÍÓÚÜ"
-# Cola original del mensaje del intro: espera, apagado de pantalla y fin.
-MESSAGE_TAIL = bytes.fromhex("c8 80 c8 e0 c5 c8 28 ff")
-MESSAGE_HEAD = bytes([0xC0])
+
+
+@dataclass(frozen=True)
+class Scenario:
+    """Qué mensaje se sustituye y con qué comandos de cabecera y cola se conserva su estructura."""
+
+    table_address: int
+    index: int
+    free: tuple[int, int]  # relleno 0xFF al final del banco de la tabla
+    head: bytes
+    tail: bytes
+    text: str
+
+
+SCENARIOS = {
+    # Mensaje 0 del intro ("300年前・・・"): abre con C0; la cola es espera, apagado de pantalla y fin.
+    "intro": Scenario(
+        0xE2EE73, 0, (0xE2F8A6, 0xE30000), bytes([0xC0]), bytes.fromhex("c8 80 c8 e0 c5 c8 28 ff"),
+        "Hace trescientos años...\n¿Quién lo recordará hoy?",
+    ),
+    # Primer mensaje del campo, "古い神殿のようです・・・": abre con C1, termina con CD 00 y C7.
+    "field": Scenario(
+        0xE7362B, 0, (0xE7FC81, 0xE80000), bytes([0xC1]), bytes.fromhex("cd 00 c7"),
+        "Parece un templo muy antiguo...\nNo hay nadie por aquí.",
+    ),
+}
 
 
 def parse_font_art(text: str) -> dict[str, list[str]]:
@@ -113,8 +138,8 @@ def encode_latin(text: str) -> bytes:
     return bytes(output)
 
 
-def message_blob(text: str) -> bytes:
-    return MESSAGE_HEAD + encode_latin(text) + MESSAGE_TAIL
+def message_blob(scenario: Scenario, text: str | None = None) -> bytes:
+    return scenario.head + encode_latin(scenario.text if text is None else text) + scenario.tail
 
 
 def run_asar(asar: Path, rom_path: Path, font: bytes) -> None:
@@ -145,35 +170,55 @@ def changed_ranges(original: bytes, patched: bytes) -> list[tuple[int, int]]:
     return ranges
 
 
-def check_changes_are_expected(ranges: list[tuple[int, int]], message_range: tuple[int, int]) -> None:
-    """Todo byte cambiado debe caer en el gancho, el código, la fuente, el blob reubicado o su puntero."""
-    allowed = [(cpu_to_offset(a), cpu_to_offset(b)) for a, b in (HOOK_RANGE, CODE_RANGE, (FONT_START, FONT_END))]
-    allowed.append(message_range)
-    table_offset = cpu_to_offset(TABLE_ADDRESS)
-    allowed.append((table_offset, table_offset + 2))
+def allowed_regions(message_range: tuple[int, int], pointer_offset: int) -> list[tuple[str, int, int]]:
+    """Regiones de la ROM que la prueba puede tocar, como ``(nombre, desde, hasta)`` en offsets de fichero."""
+    regions = [(f"hook {n}", cpu_to_offset(a), cpu_to_offset(b)) for n, (a, b) in enumerate(HOOK_RANGES, start=1)]
+    regions.append(("hook code", cpu_to_offset(CODE_RANGE[0]), cpu_to_offset(CODE_RANGE[1])))
+    regions.append(("font", cpu_to_offset(FONT_START), cpu_to_offset(FONT_END)))
+    regions.append(("message blob", *message_range))
+    regions.append(("table pointer", pointer_offset, pointer_offset + 2))
+    return regions
+
+
+def check_changes_are_expected(ranges: list[tuple[int, int]], message_range: tuple[int, int], pointer_offset: int) -> None:
+    """Todo byte cambiado debe caer en los ganchos, el código, la fuente, el blob reubicado o su puntero."""
+    regions = allowed_regions(message_range, pointer_offset)
     for start, end in ranges:
-        if not any(low <= start and end <= high for low, high in allowed):
+        if not any(low <= start and end <= high for _, low, high in regions):
             raise PatchError(f"unexpected change at 0x{start:06X}-0x{end:06X}")
 
 
-def build_probe(rom: bytes, art: dict[str, list[str]], text: str, asar: Path, scratch: Path) -> bytes:
-    for low, high in (CODE_RANGE, (FONT_START, FONT_END), MESSAGE_FREE):
+def summarize_changes(ranges: list[tuple[int, int]], message_range: tuple[int, int], pointer_offset: int) -> dict[str, int]:
+    """Bytes cambiados por región, en el orden de ``allowed_regions``."""
+    totals = {name: 0 for name, _, _ in allowed_regions(message_range, pointer_offset)}
+    for start, end in ranges:
+        for name, low, high in allowed_regions(message_range, pointer_offset):
+            if low <= start and end <= high:
+                totals[name] += end - start
+                break
+    return totals
+
+
+def build_probe(rom: bytes, art: dict[str, list[str]], scenario: Scenario, text: str | None, asar: Path, scratch: Path) -> bytes:
+    for low, high in (CODE_RANGE, (FONT_START, FONT_END), scenario.free):
         region = rom[cpu_to_offset(low) : cpu_to_offset(high)]
         if region.count(0xFF) != len(region):
             raise PatchError(f"free space 0x{low:06X}-0x{high:06X} is not all 0xFF in this ROM")
     font = font_binary(art)
-    blob = message_blob(text)
+    blob = message_blob(scenario, text)
     if not tokenize(blob).complete:
         raise PatchError("the Latin message does not parse")
     patcher = RomPatcher(rom)
-    table = read_all_tables(rom)[TABLE_ADDRESS]
-    address = relocate_blob(patcher, table, MESSAGE_INDEX, blob, FreeSpace(*MESSAGE_FREE))
+    table = read_all_tables(rom)[scenario.table_address]
+    address = relocate_blob(patcher, table, scenario.index, blob, FreeSpace(*scenario.free))
     patcher.verify_log_covers_changes()
     scratch.write_bytes(bytes(patcher.data))
     run_asar(asar, scratch, font)
     patched = scratch.read_bytes()
     message_start = cpu_to_offset(address)
-    check_changes_are_expected(changed_ranges(rom, patched), (message_start, message_start + len(blob)))
+    pointer_offset = cpu_to_offset(scenario.table_address) + 2 * scenario.index
+    ranges = changed_ranges(rom, patched)
+    check_changes_are_expected(ranges, (message_start, message_start + len(blob)), pointer_offset)
     return patched
 
 
@@ -182,7 +227,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rom", default=os.environ.get("DARK_LAW_ROM"), help="ROM original (o DARK_LAW_ROM)")
     parser.add_argument("--asar", default=os.environ.get("ASAR"), help="ejecutable de asar (o ASAR)")
     parser.add_argument("--font-art", required=True, help="arte de la fuente latina (ver parse_font_art)")
-    parser.add_argument("--text", default="Hace trescientos años...\n¿Quién lo recordará hoy?", help="texto del mensaje")
+    parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="intro", help="mensaje que se sustituye")
+    parser.add_argument("--text", help="texto del mensaje (por defecto el del escenario; \\n separa las líneas)")
     parser.add_argument("--out", required=True, help="ruta de la ROM de prueba (fuera del repositorio)")
     arguments = parser.parse_args(argv)
     if not arguments.rom or not arguments.asar:
@@ -191,9 +237,14 @@ def main(argv: list[str] | None = None) -> int:
     rom = Path(arguments.rom).read_bytes()
     art = parse_font_art(Path(arguments.font_art).read_text(encoding="utf-8"))
     out = Path(arguments.out)
-    patched = build_probe(rom, art, arguments.text.replace("\\n", "\n"), Path(arguments.asar), out)
-    for start, end in changed_ranges(rom, patched):
-        print(f"0x{start:06X}-0x{end:06X} ({end - start} bytes)")
+    text = None if arguments.text is None else arguments.text.replace("\\n", "\n")
+    patched = build_probe(rom, art, SCENARIOS[arguments.scenario], text, Path(arguments.asar), out)
+    scenario = SCENARIOS[arguments.scenario]
+    pointer_offset = cpu_to_offset(scenario.table_address) + 2 * scenario.index
+    new_start = cpu_to_offset(scenario.free[0])
+    new_range = (new_start, new_start + len(message_blob(scenario, text)))
+    for region, total in summarize_changes(changed_ranges(rom, patched), new_range, pointer_offset).items():
+        print(f"{region:14s} {total:5d} bytes cambiados")
     return 0
 
 

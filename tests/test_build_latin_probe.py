@@ -86,19 +86,34 @@ class EncodeTests(unittest.TestCase):
             probe.letter_index("日")
 
     def test_message_blob_parses_to_the_end(self):
-        blob = probe.message_blob("Hace trescientos años...\n¿Quién lo recordará hoy?")
+        blob = probe.message_blob(probe.SCENARIOS["intro"])
         parsed = sf.tokenize(blob)
         self.assertTrue(parsed.complete)
         self.assertEqual(parsed.length, len(blob))
+
+    def test_every_scenario_blob_parses_and_text_fits_its_window(self):
+        for name, scenario in probe.SCENARIOS.items():
+            with self.subTest(scenario=name):
+                self.assertTrue(sf.tokenize(probe.message_blob(scenario)).complete)
+                longest = max(len(line) for line in scenario.text.split("\n"))
+                self.assertLessEqual(longest, 24 if name == "intro" else 32)
 
 
 class ChangedRangesTests(unittest.TestCase):
     def test_ranges(self):
         self.assertEqual(probe.changed_ranges(b"abcdef", b"aXcdYZ"), [(1, 2), (4, 6)])
 
+    def test_summary_groups_bytes_by_region(self):
+        hook = probe.cpu_to_offset(probe.HOOK_RANGES[0][0])
+        font = probe.cpu_to_offset(probe.FONT_START)
+        summary = probe.summarize_changes([(hook, hook + 4), (font, font + 8), (font + 10, font + 12)], (0x22F8A6, 0x22F8B0), 0x22EE73)
+        self.assertEqual(summary["hook 1"], 4)
+        self.assertEqual(summary["font"], 10)
+        self.assertEqual(summary["message blob"], 0)
+
     def test_unexpected_change_is_rejected(self):
         with self.assertRaises(probe.PatchError):
-            probe.check_changes_are_expected([(0x500, 0x501)], (0x22F8A6, 0x22F8B0))
+            probe.check_changes_are_expected([(0x500, 0x501)], (0x22F8A6, 0x22F8B0), 0x22EE73)
 
 
 @unittest.skipUnless(REAL_ROM and ASAR, "set DARK_LAW_ROM and ASAR to assemble the hook against the real ROM")
@@ -106,11 +121,14 @@ class AssembleTests(unittest.TestCase):
     def test_hook_assembles_and_only_expected_bytes_change(self):
         rom = Path(REAL_ROM).read_bytes()
         with tempfile.TemporaryDirectory() as work:
-            patched = probe.build_probe(rom, solid_art(), "Hola mundo", Path(ASAR), Path(work) / "probe.sfc")
-        self.assertEqual(len(patched), len(rom))
-        hook = cpu_hook = probe.cpu_to_offset(probe.HOOK_RANGE[0])
-        self.assertEqual(patched[hook], 0x5C)  # JML
-        self.assertEqual(rom[cpu_hook : cpu_hook + 4].hex(), "c9e5f06b")
+            for name, scenario in probe.SCENARIOS.items():
+                with self.subTest(scenario=name):
+                    patched = probe.build_probe(rom, solid_art(), scenario, "Hola mundo", Path(ASAR), Path(work) / "probe.sfc")
+                    self.assertEqual(len(patched), len(rom))
+                    for start, _ in probe.HOOK_RANGES:
+                        offset = probe.cpu_to_offset(start)
+                        self.assertEqual(patched[offset], 0x5C)  # JML
+                        self.assertEqual(rom[offset : offset + 2].hex(), "c9e5")
 
 
 if __name__ == "__main__":
