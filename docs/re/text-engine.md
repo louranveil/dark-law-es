@@ -25,7 +25,7 @@ The text interpreter reads bytes through a long pointer in direct page `$1D`-`$1
 | `C3` | Line break inside text (handled by the text routine itself). |
 | `E5 nn` | Skips `nn` glyph slots (handled by the text routine itself). |
 
-Glyph slots per window: 24, as two rows of 12 (`$0A45` counts up to `0x18`; slots 0-11 are the first row and 12-23 the second, see [latin-font-spike.md](latin-font-spike.md)). The `C3` command sets the slot to 12 in the window type `$0A4C = 1`, so it only works as a line break from the first row.
+Glyph slots in the narration window (loop 1, window type 1): 24, as two rows of 12 (`$0A45` counts up to `0x18`; slots 0-11 are the first row and 12-23 the second, see [latin-font-spike.md](latin-font-spike.md)); other windows have their own loops and counts, for example 32 slots as two rows of 16 in the field messages, see [window-types.md](window-types.md). The `C3` command sets the slot to 12 in the window type `$0A4C = 1`, so it only works as a line break from the first row.
 
 **Which character each glyph is has not been decided yet.** The glyph indices are known and stable; the mapping to Unicode needs a table. A first attempt with template matching against MS Gothic gave scores of 0.6-0.8 without a clear winner (for example it confused `は` with `ぱ`), so the table needs human review. From the intro: `0A` is こ, `19` is の, `16` is に, `1A` is は, `FD CB FD 60` is 年前.
 
