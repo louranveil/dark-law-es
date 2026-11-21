@@ -1,0 +1,1080 @@
+# Latin font of the Dark Law Spanish translation: ink source, prototype 1.
+#
+# Original work of this project (MIT, like the rest of the repository); no glyph was copied from another font.
+# Format (read by tools/build_custom_font.py; see docs/fonts/custom-font.md):
+#   glyph <char|U+XXXX> top=<row> left=<column>   then pixel rows ('X' ink, '.' empty) until a blank line
+#   mark <name> <x>,<y> <x>,<y> ...               a set of ink pixels placed in cell coordinates
+#   compose <char> <base char> <mark>             the base glyph plus the mark
+#   flip <char> <source char> <first row> <last row>   the source glyph flipped vertically between those rows
+#   rotate <char> <source char> <first row> <last row> <first column> <last column>   the source glyph turned 180 degrees in that box
+# The cell is 8x16 (columns 0-7, rows 0-15, advance 8). Capitals and ascenders occupy rows 3-12, the x-height
+# starts at row 6, descenders reach row 15, accents on capitals use rows 0-1 and on lowercase letters rows 3-4.
+
+# ---- Capitals (6 wide, columns 1-6, rows 3-12)
+
+glyph A top=3 left=1
+..XX..
+.X..X.
+.X..X.
+X....X
+X....X
+XXXXXX
+X....X
+X....X
+X....X
+X....X
+
+glyph B top=3 left=1
+XXXXX.
+X....X
+X....X
+X....X
+XXXXX.
+X....X
+X....X
+X....X
+X....X
+XXXXX.
+
+glyph C top=3 left=1
+.XXXX.
+X....X
+X.....
+X.....
+X.....
+X.....
+X.....
+X.....
+X....X
+.XXXX.
+
+glyph D top=3 left=1
+XXXX..
+X...X.
+X....X
+X....X
+X....X
+X....X
+X....X
+X....X
+X...X.
+XXXX..
+
+glyph E top=3 left=1
+XXXXXX
+X.....
+X.....
+X.....
+XXXX..
+X.....
+X.....
+X.....
+X.....
+XXXXXX
+
+glyph F top=3 left=1
+XXXXXX
+X.....
+X.....
+X.....
+XXXX..
+X.....
+X.....
+X.....
+X.....
+X.....
+
+glyph G top=3 left=1
+.XXXX.
+X....X
+X.....
+X.....
+X.....
+X..XXX
+X....X
+X....X
+X....X
+.XXXX.
+
+glyph H top=3 left=1
+X....X
+X....X
+X....X
+X....X
+XXXXXX
+X....X
+X....X
+X....X
+X....X
+X....X
+
+glyph I top=3 left=1
+XXXXX
+..X..
+..X..
+..X..
+..X..
+..X..
+..X..
+..X..
+..X..
+XXXXX
+
+glyph J top=3 left=1
+..XXX
+...X.
+...X.
+...X.
+...X.
+...X.
+...X.
+X..X.
+X..X.
+.XX..
+
+glyph K top=3 left=1
+X....X
+X...X.
+X..X..
+X.X...
+XX....
+XX....
+X.X...
+X..X..
+X...X.
+X....X
+
+glyph L top=3 left=1
+X.....
+X.....
+X.....
+X.....
+X.....
+X.....
+X.....
+X.....
+X.....
+XXXXXX
+
+glyph M top=3 left=1
+X....X
+XX..XX
+XX..XX
+X.XX.X
+X.XX.X
+X....X
+X....X
+X....X
+X....X
+X....X
+
+glyph N top=3 left=1
+X....X
+XX...X
+XX...X
+X.X..X
+X.X..X
+X..X.X
+X..X.X
+X...XX
+X...XX
+X....X
+
+glyph O top=3 left=1
+.XXXX.
+X....X
+X....X
+X....X
+X....X
+X....X
+X....X
+X....X
+X....X
+.XXXX.
+
+glyph P top=3 left=1
+XXXXX.
+X....X
+X....X
+X....X
+XXXXX.
+X.....
+X.....
+X.....
+X.....
+X.....
+
+glyph Q top=3 left=1
+.XXXX.
+X....X
+X....X
+X....X
+X....X
+X....X
+X..X.X
+X...XX
+X....X
+.XXXXX
+
+glyph R top=3 left=1
+XXXXX.
+X....X
+X....X
+X....X
+XXXXX.
+X.X...
+X..X..
+X...X.
+X....X
+X....X
+
+glyph S top=3 left=1
+.XXXX.
+X....X
+X.....
+X.....
+.XXXX.
+.....X
+.....X
+.....X
+X....X
+.XXXX.
+
+glyph T top=3 left=1
+XXXXX
+..X..
+..X..
+..X..
+..X..
+..X..
+..X..
+..X..
+..X..
+..X..
+
+glyph U top=3 left=1
+X....X
+X....X
+X....X
+X....X
+X....X
+X....X
+X....X
+X....X
+X....X
+.XXXX.
+
+glyph V top=3 left=1
+X....X
+X....X
+X....X
+X....X
+.X..X.
+.X..X.
+.X..X.
+..XX..
+..XX..
+..XX..
+
+glyph W top=3 left=1
+X....X
+X....X
+X....X
+X....X
+X....X
+X.XX.X
+X.XX.X
+XX..XX
+XX..XX
+X....X
+
+glyph X top=3 left=1
+X....X
+X....X
+.X..X.
+.X..X.
+..XX..
+..XX..
+.X..X.
+.X..X.
+X....X
+X....X
+
+glyph Y top=3 left=1
+X....X
+X....X
+.X..X.
+.X..X.
+..XX..
+..XX..
+..XX..
+..XX..
+..XX..
+..XX..
+
+glyph Z top=3 left=1
+XXXXXX
+.....X
+....X.
+....X.
+...X..
+..X...
+.X....
+.X....
+X.....
+XXXXXX
+
+# ---- Digits (rows 3-12)
+
+glyph 0 top=3 left=1
+.XXXX.
+X....X
+X...XX
+X..X.X
+X..X.X
+X.X..X
+X.X..X
+XX...X
+X....X
+.XXXX.
+
+glyph 1 top=3 left=1
+..X..
+.XX..
+X.X..
+..X..
+..X..
+..X..
+..X..
+..X..
+..X..
+XXXXX
+
+glyph 2 top=3 left=1
+.XXXX.
+X....X
+.....X
+.....X
+....X.
+...X..
+..X...
+.X....
+X.....
+XXXXXX
+
+glyph 3 top=3 left=1
+.XXXX.
+X....X
+.....X
+.....X
+..XXX.
+.....X
+.....X
+.....X
+X....X
+.XXXX.
+
+glyph 4 top=3 left=1
+....X.
+...XX.
+..X.X.
+.X..X.
+X...X.
+XXXXXX
+....X.
+....X.
+....X.
+....X.
+
+glyph 5 top=3 left=1
+XXXXXX
+X.....
+X.....
+X.....
+XXXXX.
+.....X
+.....X
+.....X
+X....X
+.XXXX.
+
+glyph 6 top=3 left=1
+..XXX.
+.X....
+X.....
+X.....
+XXXXX.
+X....X
+X....X
+X....X
+X....X
+.XXXX.
+
+glyph 7 top=3 left=1
+XXXXXX
+.....X
+....X.
+....X.
+...X..
+...X..
+..X...
+..X...
+.X....
+.X....
+
+glyph 8 top=3 left=1
+.XXXX.
+X....X
+X....X
+X....X
+.XXXX.
+X....X
+X....X
+X....X
+X....X
+.XXXX.
+
+glyph 9 top=3 left=1
+.XXXX.
+X....X
+X....X
+X....X
+X....X
+.XXXXX
+.....X
+.....X
+....X.
+.XXX..
+
+# ---- Lowercase (5 wide, columns 1-5; x-height rows 6-12)
+
+glyph a top=6 left=1
+.XXX.
+....X
+....X
+.XXXX
+X...X
+X...X
+.XXXX
+
+glyph b top=3 left=1
+X....
+X....
+X....
+XXXX.
+X...X
+X...X
+X...X
+X...X
+X...X
+XXXX.
+
+glyph c top=6 left=1
+.XXXX
+X....
+X....
+X....
+X....
+X....
+.XXXX
+
+glyph d top=3 left=1
+....X
+....X
+....X
+.XXXX
+X...X
+X...X
+X...X
+X...X
+X...X
+.XXXX
+
+glyph e top=6 left=1
+.XXX.
+X...X
+X...X
+XXXXX
+X....
+X....
+.XXXX
+
+glyph f top=3 left=1
+..XX.
+.X...
+.X...
+XXXX.
+.X...
+.X...
+.X...
+.X...
+.X...
+.X...
+
+glyph g top=6 left=1
+.XXXX
+X...X
+X...X
+X...X
+X...X
+X...X
+.XXXX
+....X
+X...X
+.XXX.
+
+glyph h top=3 left=1
+X....
+X....
+X....
+XXXX.
+X...X
+X...X
+X...X
+X...X
+X...X
+X...X
+
+glyph i top=4 left=2
+.X.
+...
+XX.
+.X.
+.X.
+.X.
+.X.
+.X.
+XXX
+
+glyph j top=4 left=1
+...X.
+.....
+..XX.
+...X.
+...X.
+...X.
+...X.
+...X.
+...X.
+...X.
+X..X.
+.XX..
+
+glyph k top=3 left=1
+X....
+X....
+X....
+X..X.
+X.X..
+XX...
+X.X..
+X..X.
+X...X
+X...X
+
+glyph l top=3 left=2
+XX.
+.X.
+.X.
+.X.
+.X.
+.X.
+.X.
+.X.
+.X.
+XXX
+
+glyph m top=6 left=1
+XX.X.
+X.X.X
+X.X.X
+X.X.X
+X.X.X
+X.X.X
+X.X.X
+
+glyph n top=6 left=1
+X.XX.
+XX..X
+X...X
+X...X
+X...X
+X...X
+X...X
+
+glyph o top=6 left=1
+.XXX.
+X...X
+X...X
+X...X
+X...X
+X...X
+.XXX.
+
+glyph p top=6 left=1
+XXXX.
+X...X
+X...X
+X...X
+X...X
+X...X
+XXXX.
+X....
+X....
+X....
+
+glyph q top=6 left=1
+.XXXX
+X...X
+X...X
+X...X
+X...X
+X...X
+.XXXX
+....X
+....X
+....X
+
+glyph r top=6 left=1
+X.XX.
+XX..X
+X....
+X....
+X....
+X....
+X....
+
+glyph s top=6 left=1
+.XXXX
+X....
+X....
+.XXX.
+....X
+....X
+XXXX.
+
+glyph t top=4 left=1
+.X...
+.X...
+XXXX.
+.X...
+.X...
+.X...
+.X...
+.X..X
+..XX.
+
+glyph u top=6 left=1
+X...X
+X...X
+X...X
+X...X
+X...X
+X...X
+.XXXX
+
+glyph v top=6 left=1
+X...X
+X...X
+X...X
+X...X
+.X.X.
+.X.X.
+..X..
+
+glyph w top=6 left=1
+X...X
+X...X
+X...X
+X.X.X
+X.X.X
+X.X.X
+.X.X.
+
+glyph x top=6 left=1
+X...X
+X...X
+.X.X.
+..X..
+.X.X.
+X...X
+X...X
+
+glyph y top=6 left=1
+X...X
+X...X
+X...X
+X...X
+X...X
+X...X
+.XXXX
+....X
+X...X
+.XXX.
+
+glyph z top=6 left=1
+XXXXX
+....X
+...X.
+..X..
+.X...
+X....
+XXXXX
+
+# Dotless i, base of í.
+glyph U+0131 top=6 left=2
+XX.
+.X.
+.X.
+.X.
+.X.
+.X.
+XXX
+
+# ---- Punctuation and symbols
+
+glyph U+0020 top=0 left=0
+
+glyph . top=11 left=3
+XX
+XX
+
+glyph , top=11 left=3
+XX
+XX
+.X
+X.
+
+glyph : top=7 left=3
+XX
+XX
+..
+..
+XX
+XX
+
+glyph ; top=7 left=3
+XX
+XX
+..
+..
+XX
+XX
+.X
+X.
+
+glyph ! top=3 left=3
+XX
+XX
+XX
+XX
+XX
+XX
+XX
+..
+XX
+XX
+
+glyph ? top=3 left=1
+.XXXX.
+X....X
+.....X
+....X.
+...X..
+...X..
+......
+......
+..XX..
+..XX..
+
+glyph ' top=3 left=3
+XX
+XX
+X.
+
+glyph " top=3 left=2
+X..X
+X..X
+X..X
+
+glyph ( top=3 left=3
+..X
+.X.
+.X.
+.X.
+X..
+X..
+X..
+X..
+.X.
+.X.
+.X.
+..X
+
+glyph ) top=3 left=2
+X..
+.X.
+.X.
+.X.
+..X
+..X
+..X
+..X
+.X.
+.X.
+.X.
+X..
+
+glyph [ top=3 left=3
+XXX
+X..
+X..
+X..
+X..
+X..
+X..
+X..
+X..
+X..
+X..
+XXX
+
+glyph ] top=3 left=2
+XXX
+..X
+..X
+..X
+..X
+..X
+..X
+..X
+..X
+..X
+..X
+XXX
+
+glyph { top=3 left=3
+..X
+.X.
+.X.
+.X.
+.X.
+X..
+X..
+.X.
+.X.
+.X.
+.X.
+..X
+
+glyph } top=3 left=2
+X..
+.X.
+.X.
+.X.
+.X.
+..X
+..X
+.X.
+.X.
+.X.
+.X.
+X..
+
+glyph - top=9 left=2
+XXXX
+
+glyph U+2014 top=9 left=0
+XXXXXXXX
+
+glyph U+2026 top=11 left=0
+XX.XX.XX
+XX.XX.XX
+
+glyph U+00AB top=7 left=1
+..X..X
+.X..X.
+X..X..
+.X..X.
+..X..X
+
+glyph U+00BB top=7 left=1
+X..X..
+.X..X.
+..X..X
+.X..X.
+X..X..
+
+glyph / top=3 left=1
+....X
+....X
+...X.
+...X.
+..X..
+..X..
+.X...
+.X...
+X....
+X....
+
+glyph \ top=3 left=1
+X....
+X....
+.X...
+.X...
+..X..
+..X..
+...X.
+...X.
+....X
+....X
+
+glyph + top=7 left=1
+..X..
+..X..
+XXXXX
+..X..
+..X..
+
+glyph = top=8 left=1
+XXXXX
+.....
+XXXXX
+
+glyph _ top=14 left=0
+XXXXXXXX
+
+glyph * top=5 left=1
+..X..
+X.X.X
+.XXX.
+X.X.X
+..X..
+
+glyph < top=7 left=2
+..X
+.X.
+X..
+.X.
+..X
+
+glyph > top=7 left=3
+X..
+.X.
+..X
+.X.
+X..
+
+glyph | top=3 left=3
+X
+X
+X
+X
+X
+X
+X
+X
+X
+X
+X
+X
+
+glyph ~ top=8 left=1
+.XX.X
+X..X.
+
+glyph ^ top=3 left=1
+..X..
+.X.X.
+X...X
+
+glyph ` top=3 left=3
+X.
+.X
+
+glyph # top=4 left=1
+.X..X.
+.X..X.
+XXXXXX
+.X..X.
+.X..X.
+.X..X.
+XXXXXX
+.X..X.
+.X..X.
+
+glyph $ top=2 left=1
+..X..
+.XXXX
+X.X..
+X.X..
+X.X..
+.XXX.
+..X.X
+..X.X
+..X.X
+XXXX.
+..X..
+
+glyph % top=4 left=1
+XX...X
+XX..X.
+....X.
+...X..
+...X..
+..X...
+.X.XX.
+X..XX.
+X....X
+
+glyph & top=3 left=1
+.XXX..
+X...X.
+X...X.
+.X.X..
+..X...
+.X.X.X
+X...XX
+X...X.
+X..XX.
+.XX..X
+
+glyph @ top=3 left=1
+.XXXX.
+X....X
+X.XXXX
+X.X..X
+X.X..X
+X.X..X
+X.XXXX
+X.....
+X....X
+.XXXX.
+
+# ---- Marks (cell coordinates)
+
+mark acute_low 4,3 3,4
+mark acute_cap 4,0 3,1
+mark diaeresis_low 2,4 4,4
+mark diaeresis_cap 2,1 5,1
+mark tilde_low 2,3 3,3 5,3 1,4 4,4
+mark tilde_cap 3,0 4,0 6,0 2,1 5,1
+
+# ---- Composed and flipped glyphs
+
+compose á a acute_low
+compose é e acute_low
+compose í U+0131 acute_low
+compose ó o acute_low
+compose ú u acute_low
+compose ü u diaeresis_low
+compose ñ n tilde_low
+compose Á A acute_cap
+compose É E acute_cap
+compose Í I acute_cap
+compose Ó O acute_cap
+compose Ú U acute_cap
+compose Ü U diaeresis_cap
+compose Ñ N tilde_cap
+rotate ¡ ! 3 12 3 4
+rotate ¿ ? 3 12 1 6
