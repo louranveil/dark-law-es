@@ -16,6 +16,15 @@ The question asked of each font is whether its glyphs may be modified and redist
 | Unscii (`unscii-16`) | Viznut | Public domain (`unscii-16-full` is GPL) | Yes for `unscii-16` | None | Yes |
 | Pixel Operator | Jayvee Enaguas (HarvettFox96) | CC0 1.0 (statement by the author) | Yes | None | Yes, with the caveat below |
 | Orp | Micah Elliott | No licence file; BDF says "public domain" | Not established | Unknown | **No** |
+| Departure Mono | Helena Zhang | OFL-1.1 (the font; the site is MIT) | Yes, with conditions | Ship the OFL text and copyright; the modified glyphs must stay under the OFL; the copyright line declares no Reserved Font Name | Yes, with care |
+| GohuFont | Hugo Chargois | WTFPL version 2 | Yes | None | Yes |
+| Fairfax SM | Kreative Software | OFL-1.1 (Open Relay repository) | Yes, with conditions | Ship the OFL text and copyright | Yes, provenance of the BDF not fully verified |
+| Scientifica | Akshay Oppiliappan | OFL-1.1, no Reserved Font Name declared | Yes, with conditions | OFL text and copyright, plus the MIT notice of creep, from which most Latin glyphs come | Yes, with the provenance caveat below |
+| Royalty Mono, Quest Square | SpicyGame | CC0 1.0 (itch.io page) | Yes | None | Yes, BDF taken from a mirror |
+| Pixelzone | GGBotNet | CC0 1.0 (itch.io page) | Yes | None | Yes, BDF taken from a mirror |
+| Dylex Terminal | Dylan Simon | CC0 ("Fonts: CC0 public domain" in the repository description) | Yes | None | Yes, but discarded for fit |
+| Not Jam Novel | Not Jam | CC0 (stated for the whole pack in the search snippet of the author's itch.io page) | Yes | None | Yes, but discarded for fit |
+| Cairopixel | GGBotNet | OFL-1.1 according to the author's collection listing; its own page could not be read | Not verified | Unknown | **No**, discarded for fit before the licence mattered |
 
 ## Per Font
 
@@ -74,6 +83,52 @@ The question asked of each font is whether its glyphs may be modified and redist
 - ProFont (Tobias Jung) is published under the MIT licence since 2014 according to <https://tobiasjung.name/profont/>, and MIT requires the copyright notice to be kept. A work adapted from an MIT font cannot simply be declared public domain, and the Orp repository gives no explanation. The FontPixel catalogue labels Orp as public domain, but it says itself that this is an unofficial summary and that "the upstream original text prevails".
 - Decision: not accepted. It would need either a statement from the author or the ProFont notice and a check of the derivation. It is not needed, because Cozette and Spleen cover the 6x12 size.
 
+## Second Round (read on 2026-11-20)
+
+The second search added the fonts below. The results of fit and rendering are in [evaluation-round-2.md](evaluation-round-2.md).
+
+### Departure Mono
+
+- Source: <https://departuremono.com/> and <https://github.com/rektdeckard/departure-mono>, release `v1.500` (2025-05-25), asset `DepartureMono-1.500.zip`. Files read: `LICENSE` and `README.md` inside the zip, and `README.md` of the repository.
+- The `LICENSE` in the zip opens with "Copyright 2022–2024 Helena Zhang (helenazhang.com)" and "This Font Software is licensed under the SIL Open Font License, Version 1.1". The copyright line does not declare a Reserved Font Name; the text "Reserved Font Name" appears only inside the licence definitions. The `README` of the repository has a table that gives the font as SIL OFL and the **site** as MIT (Helena Zhang and Tobias Fried); the `LICENSE` at the root of the repository is the MIT licence of the site and does not apply to the font, which is easy to misread.
+- The OFL consequences are the same as for Terminus (see above): the glyph bytes of a converted font are a Modified Version, must stay under the OFL, and the patch documentation should ship the OFL text and the copyright. Because no Reserved Font Name is declared, the name restriction does not formally apply, but the conservative choice is to not call the converted font "Departure Mono".
+- The font is an OpenType file with outlines designed on an 11-pixel grid (the `README` asks for sizes in increments of 11 px). It was rasterized with Pillow at 11 px without antialiasing. File used: `DepartureMono-Regular.otf` (SHA-256 `4d53f663155cf8bf7ffc8e688776e719625f7bbb80a8d90073438b249261a2e0`).
+
+### GohuFont
+
+- Source: <https://github.com/hchargois/gohufont>, last commit `cc36b8c` (2017-06-26), release 2.1. Files read: `README.md`, `COPYING-LICENSE`, header of the BDF.
+- "Copyright 2015 by Hugo Chargois"; "released under the terms of the WTFPL version 2". The BDF header repeats "Licensed under the WTFPL". The licence has no conditions, but it is an informal text; it is accepted here because it grants every permission needed.
+- Only `gohufont-11.bdf` (6x11, ISO 8859-1) was used (SHA-256 `c3de0e25ee9cba0b07866647a3c55d936db8f8944bc8134346c384727afa6dbb`). The `uni` variants are based "extensively on the fixed 6x10 font by Markus Kuhn", whose terms were not checked, and they were not used. The `README` says the 14-px font is not derived from Terminus.
+
+### Fairfax SM
+
+- Source: Fairfax HD by Kreative Software, <https://github.com/kreativekorp/open-relay> (folder `FairfaxHD`, which includes `FairfaxSMHD.ttf`). Its `OFL.txt` opens with "Copyright (c) 2017-2020 Kreative Software" and the SIL Open Font License 1.1, with no Reserved Font Name on that line.
+- The bitmap used is the 12-px BDF published by the FontPixel catalogue (<https://fontpixel.com/en/fonts/fairfax-sm/>), SHA-256 `df14a1b2cec9ffb4bc0c7a7e81ba0a20bce46b9b4de39168c728e8217f3e6c41`. It was not compared against the `.ttf` of the author, so the glyphs are accepted as the same design only on the catalogue's word.
+
+### Scientifica
+
+- Source: <https://github.com/oppiliappan/scientifica>, release `v2.3` (2021-10-01), asset `scientifica.tar` (SHA-256 `f0857869a0e846c6f175dcb853dd1f119ea17a75218e63b7f0736d5a8e1e8a7f`). Files read: `LICENSE`, `README.md`, the BDF header.
+- "Copyright (c) 2020 Akshay Oppiliappan" under the SIL Open Font License 1.1, with no Reserved Font Name declared on the copyright line.
+- Provenance caveat: the `README` says most Basic Latin glyphs are from creep by Romeo Van Snick (MIT, "Copyright (c) 2014 Romeo Van Snick", read in the `LICENSE` of <https://github.com/romeovs/creep>) and that "some characters are based on Lemon" (<http://artwizaleczapka.sourceforge.net/>), whose licence was **not** verified; a third-party repository says the Artwiz family was released under an informal "ZBL" licence, which was not confirmed at the source. The BDF repeats "Copyright (c) 2015, romeovs". A release would need the MIT notice of creep next to the OFL text, and the Lemon question stays open. File used: `scientifica-11.bdf` (SHA-256 `d298f1fe8ce2234a1ecaeff7ab7c9db7cf47b74b658f4e8d614a7f4e8e702049`).
+
+### Royalty Mono and Quest Square
+
+- Source: <https://spicygame.itch.io/fonts> (SG Font Collection by SpicyGame). The page says "All fonts available as TTF files. Licensed under CC0", the asset licence field is "Creative Commons Zero v1.0 Universal", and in the comments the author answers that it is CC0 "so you can use them for anything". The version listed is 6 Jun 20, 2026, file `sg-fonts-ttf.zip`.
+- The itch.io download answered HTTP 429 to an automated request and was not retried. The BDF files used come from the FontPixel catalogue (<https://fontpixel.com/en/fonts/royalty-mono/>, `RoyaltyMono-14px.bdf`, SHA-256 `a7e29fd1cd2452607fd8bed54c8f44eafc373f2f17a2312e9388d557312606a9`; <https://fontpixel.com/en/fonts/quest-square/>, `QuestSquare-15px.bdf`, SHA-256 `19a7b52ca1c3e9cbec9992443fbd1ad371ed1f385ab4f6d4afe6fcb8353ae76f`), whose page links back to the author's itch.io page. They were not compared against the author's TTF files. The catalogue lists Royalty Mono at 14 px and Quest Square at 15 px; the itch.io page lists them as 14 pt and 12 pt.
+
+### Pixelzone
+
+- Source: <https://ggbot.itch.io/pixelzone-font> by GGBotNet (<https://www.ggbot.net/fonts/>), file `Pixelzone_Font_1_10.zip` (33 kB). The page says "This Font Software is licensed under the Creative Commons Zero v1.0 Universal" and the asset licence field agrees.
+- The itch.io download was not obtained (see above). The BDF comes from FontPixel (`Pixelzone-16px.bdf`, SHA-256 `b030db474217ec650d5a15f53401638e61eed7be9500159615c18e0036aa904c`); the gzip file matched the SHA-256 that the catalogue publishes (`db84f8f0…5df3`), which proves the download, not that the glyphs equal the author's release.
+
+### Dylex Terminal
+
+- Source: <https://github.com/dylex/fonts> by Dylan Simon, "X11 bitmap terminal fonts". The repository description says "Fonts: CC0 public domain, Code: BSD". The BDF used is the 7x13 of the FontPixel catalogue (SHA-256 `b4455e9b8f6871bfbfd75646542a2f63e8459c74ec8b7025dad1a7109c9cc7e2`). The relation of these fonts to the classic X11 `fixed` family was not examined.
+
+### Not Jam Novel and Cairopixel
+
+- Not Jam Novel belongs to the Not Jam Font Pack, <https://not-jam.itch.io/not-jam-font-pack>, described in the search result as "28 free CC0-licenced fonts"; the page itself was not scraped. Cairopixel is listed by its author GGBotNet in the OFL collection, <https://ggbot.itch.io/cairopixel-font>, whose page could not be read. Both were discarded for fit, so the licences were not investigated further.
+
 ## Attribution Block For The Release
 
 If Sweet16 is chosen, the documentation shipped with the patch should carry at least:
@@ -81,6 +136,13 @@ If Sweet16 is chosen, the documentation shipped with the patch should carry at l
 ```text
 Font: Sweet16mono, (c) 2018 Martin Sedlák, Boost Software License 1.0,
 https://github.com/kmar/Sweet16Font. Glyphs adapted to an 8x16 cell with outline.
+```
+
+If Departure Mono is chosen, add the text of the SIL OFL 1.1 and:
+
+```text
+Font: Departure Mono, Copyright 2022-2024 Helena Zhang, SIL Open Font License 1.1,
+https://departuremono.com/. Glyphs rasterized at 11 px and adapted to an 8x16 cell with outline.
 ```
 
 Any other candidate adds its own notice from the table above.
