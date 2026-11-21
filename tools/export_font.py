@@ -106,7 +106,7 @@ def glyph_name(char: str) -> str:
     return f"uni{ord(char):04X}"
 
 
-def build_font(glyphs: dict[str, frozenset[tuple[int, int]]], version: str = "0.1"):
+def build_font(glyphs: dict[str, frozenset[tuple[int, int]]], version: str = "0.2"):
     """``fontTools.ttLib.TTFont`` con los glifos de la fuente de tinta (importa fontTools aquí)."""
     from fontTools.fontBuilder import FontBuilder
     from fontTools.pens.ttGlyphPen import TTGlyphPen
@@ -193,7 +193,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Exporta la fuente latina propia como TrueType.")
     parser.add_argument("--source", required=True, help="fuente de tinta (assets/font/latin-8x16.txt)")
     parser.add_argument("--out", required=True, help="archivo .ttf de salida")
-    parser.add_argument("--version", default="0.1", help="versión de la fuente (por defecto 0.1)")
+    parser.add_argument("--version", default="0.2", help="versión de la fuente (por defecto 0.2)")
     arguments = parser.parse_args(argv)
 
     try:

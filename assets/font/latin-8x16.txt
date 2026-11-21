@@ -770,7 +770,7 @@ XX
 XX
 XX
 XX
-XX
+..
 ..
 XX
 XX
@@ -853,33 +853,33 @@ XXX
 ..X
 XXX
 
-glyph { top=3 left=3
-..X
-.X.
-.X.
-.X.
-.X.
-X..
-X..
-.X.
-.X.
-.X.
-.X.
-..X
+glyph { top=3 left=2
+..XX
+..X.
+..X.
+..X.
+.X..
+X...
+X...
+.X..
+..X.
+..X.
+..X.
+..XX
 
 glyph } top=3 left=2
-X..
-.X.
-.X.
-.X.
-.X.
-..X
-..X
-.X.
-.X.
-.X.
-.X.
-X..
+XX..
+.X..
+.X..
+.X..
+..X.
+...X
+...X
+..X.
+.X..
+.X..
+.X..
+XX..
 
 glyph - top=9 left=2
 XXXX
@@ -951,19 +951,23 @@ X.X.X
 X.X.X
 ..X..
 
-glyph < top=7 left=2
-..X
-.X.
-X..
-.X.
-..X
+glyph < top=6 left=2
+...X
+..X.
+.X..
+X...
+.X..
+..X.
+...X
 
-glyph > top=7 left=3
-X..
-.X.
-..X
-.X.
-X..
+glyph > top=6 left=2
+X...
+.X..
+..X.
+...X
+..X.
+.X..
+X...
 
 glyph | top=3 left=3
 X
@@ -980,8 +984,8 @@ X
 X
 
 glyph ~ top=8 left=1
-.XX.X
-X..X.
+.XX..X
+X..XX.
 
 glyph ^ top=3 left=1
 ..X..
@@ -992,40 +996,43 @@ glyph ` top=3 left=3
 X.
 .X
 
-glyph # top=4 left=1
-.X..X.
-.X..X.
-XXXXXX
+glyph # top=3 left=1
 .X..X.
 .X..X.
 .X..X.
 XXXXXX
+.X..X.
+.X..X.
+XXXXXX
+.X..X.
 .X..X.
 .X..X.
 
 glyph $ top=2 left=1
-..X..
-.XXXX
-X.X..
-X.X..
-X.X..
-.XXX.
-..X.X
-..X.X
-..X.X
-XXXX.
-..X..
+..XX..
+.XXXX.
+X....X
+X.....
+X.....
+.XXXX.
+.....X
+.....X
+.....X
+X....X
+.XXXX.
+..XX..
 
-glyph % top=4 left=1
+glyph % top=3 left=1
 XX...X
 XX..X.
 ....X.
 ...X..
 ...X..
 ..X...
-.X.XX.
-X..XX.
-X....X
+..X...
+.X....
+.X..XX
+X...XX
 
 glyph & top=3 left=1
 .XXX..
@@ -1045,8 +1052,8 @@ X....X
 X.XXXX
 X.X..X
 X.X..X
-X.X..X
-X.XXXX
+X.X.XX
+X.XX.X
 X.....
 X....X
 .XXXX.
