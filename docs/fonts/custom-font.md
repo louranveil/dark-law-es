@@ -32,7 +32,7 @@ python tools/build_latin_probe.py --rom <original.sfc> --asar <asar> --font-art 
 
 ```text
 pip install fonttools
-python tools/export_font.py --source assets/font/latin-8x16.txt --out assets/font/dark-law-latin.ttf [--version 0.1]
+python tools/export_font.py --source assets/font/latin-8x16.txt --out assets/font/dark-law-latin.ttf [--version 0.2]
 ```
 
 - **Content:** the fill only, 116 glyphs (the 111 of the game set and `— … « »` and the dotless `ı`) and a hollow-box `.notdef`. The game outline is not part of it; `build_custom_font.py` adds it for the ROM.
@@ -40,7 +40,7 @@ python tools/export_font.py --source assets/font/latin-8x16.txt --out assets/fon
 - **Outlines:** every pixel is a square of the vector outline, merged into polygons (diagonal pixels share one contour, holes run the other way).
 - **Sizes:** exact at 16 px and at whole multiples of it (32, 48, 64...) with no anti-aliasing; at any other size it is blurry or uneven, as every pixel font. Use a bilevel (non-anti-aliased) rendering.
 - **FreeType:** without instructions, FreeType's auto-hinter moved the top pixel of the acute accent up one row in the first export. The font carries empty `fpgm` and `prep` programs and a `gasp` table (grid-fit, no smoothing) so that it keeps its coordinates. With Pillow (FreeType) the 116 glyphs render pixel-exact at 16, 32, 48, 64 and 160 px, and a test checks it at 16, 32 and 48 px.
-- **Checked:** FreeType through Pillow (the pixel-exact test above) and the Windows font viewer, which opens the file as "Dark Law Latin Regular (TrueType)", version 0.1, and draws the specimen at 12 to 72 pt (the user's screenshot of 2026-11-20). **Not checked:** macOS, browsers, and the font installed and used in an editor.
+- **Checked:** FreeType through Pillow (the pixel-exact test above) and the Windows font viewer, which opens the file as "Dark Law Latin Regular (TrueType)", version 0.1 (the first export), and draws the specimen at 12 to 72 pt (the user's screenshot of 2026-11-20). **Not checked:** macOS, browsers, and the font installed and used in an editor.
 - `images/charts/custom-ttf-specimen.png` shows the font at 32 and 16 px (drawn from the TTF, not an emulator capture).
 - **Dependency:** `fontTools` is optional and imported late, like Pillow in `bitmap_font.py`. Without it `export_font.py` exits with code 1 and the tests that need it are skipped; `build_custom_font.py` and the ROM probes do not use it.
 
@@ -71,7 +71,7 @@ What the captures show:
 - **Accents.** The two-pixel acute, the two dots and the tilde are small but visible in both windows and never touch the letter. Capitals take rows 0-1, so on the first row of a window their accent sits at the very top of the glyph cell.
 - **Spacing.** With 5 to 6 pixels of ink in 8, the gap between letters is 2 to 3 pixels: airy, and a full outline leaves a dark band between neighbours instead of merged letters.
 - **Bold experiment (discarded).** Smearing every glyph one pixel to the right to get two-pixel strokes fills the counters of `m`, `w`, `M` and `W` into blocks (`wmWM` becomes unreadable). Heavier strokes need glyphs drawn for them, not a filter.
-- **Weakest glyphs.** The ones drawn last and quickly: `# $ % & @ ~ ^ { }`, `* < >` and the inverted `¡`, whose two-pixel stem is heavier than the other strokes. They read but are not polished.
+- **Weakest glyphs, retouched.** The first draft left `# $ % & @ ~ ^ { }`, `* < >` and `¡` rough. Seen at 8x and in the game, the second pass changed: `#` to the full cap height with its bars centred; `$` into a plain `S` with a tick above and below instead of a two-pixel stem through the body; `%` into two small round marks joined by a clean diagonal (it was one row short and lumpy); `&` redrawn with a closed upper loop and an open tail; `@` kept with a cleaner right edge of the inner letter; `{ }` redrawn four pixels wide with a point in the middle, like `( )` but distinct; `< >` enlarged from 5 to 7 rows and 4 pixels wide; `~` widened to 6 pixels; `!` and so `¡` with the stem shortened to six rows and two empty rows before the dot, which lightens the block that looked like a bold `i`. `^` and `*` were left as they were. All of them still read as weaker than the letters (they are drawn quickly and have only been seen at 1x in the game and at 8x here); the ones to look at first with real text are `&`, `@` and `%`.
 
 ## Limits
 
@@ -83,6 +83,6 @@ What the captures show:
 
 ## Next Steps
 
-1. Review the weakest glyphs (the list above) and the proportions of `M`, `W`, `Q`, `&` and `@` with larger test text.
+1. Look at `&`, `@` and `%` and the proportions of `M`, `W` and `Q` with real game text.
 2. Decide the stroke weight with the user (1 pixel as drawn, or a second source drawn for 2 pixels) and whether to keep the outline in all windows.
 3. Decide whether the project takes this font or Sweet16mono or Departure Mono, and then grow the hook's letter set for `— … « »` if the text needs them.
