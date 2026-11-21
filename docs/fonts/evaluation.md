@@ -2,6 +2,8 @@
 
 Status: **verified** for licences, character coverage, geometric fit and the in-game rendering of the narration window of the intro; the visual judgement is subjective. Nothing was replaced in the project: the engine hook and the build tools are the ones from the [latin font spike](../re/latin-font-spike.md), and no final font is chosen yet. Licence details and the attribution each font would need are in [licenses.md](licenses.md); what a proportional renderer would change is in [proportional-spacing.md](proportional-spacing.md).
 
+A second round with ten more fonts (Royalty Mono, Departure Mono, GohuFont, Scientifica, Pixelzone and others) is in [evaluation-round-2.md](evaluation-round-2.md); it compares them with the fonts below, keeps Sweet16mono as the first choice and puts Departure Mono ahead of Terminus 16 as the second.
+
 ## Recommendation
 
 Use **Sweet16mono** (Martin Sedlák, Boost Software License 1.0) as the working font and the first candidate for the release.
