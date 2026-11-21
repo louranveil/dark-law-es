@@ -61,7 +61,8 @@ An 8-pixel cell with an outline on both sides can hold 6 pixels of ink. Fonts de
 ### What Was And Was Not Verified In The Game
 
 - Verified: all 11 test ROMs run, and the same hook draws every font; every Spanish character in the test lines renders, including `¡ ¿ ñ Ñ`, the acute accents on capitals, `ü Ü`, and descenders. The probe builder changes only the allowed regions.
-- Not verified: the intro window is black, so the outline (value 3, dark) cannot be seen in the captures. The outline was checked with a simulation drawn from the same glyph data over a light background, `images/simulated-light-background.png`, which is not an emulator capture. A window over a bright background in the real game is still to be looked at.
+- Verified later with Sweet16mono (all 111 characters on four pages, `images/in-game/in-game-sweet16mono-pages.png`): the outline is drawn. The window capture has exactly three colors, black `(0,0,0)` background, white `(255,255,255)` fill and dark grey `(33,33,33)` outline, so in the intro palette the outline is a very dark grey that is hard to tell from the black window.
+- Not verified: how the outline looks over a bright background in the real game, because the intro window is black. That was checked with a simulation drawn from the same glyph data, `images/simulated/simulated-light-background.png`, which is not an emulator capture, and the outline colour of other windows may differ.
 - Not verified: windows other than the intro narration (portrait dialogue, menus, battle messages) and the Japanese text after the message; the spike checked the latter for the first font only.
 - The test text was drawn only in fixed 8-pixel cells; the proportional variants were never run in the emulator because the renderer does not support them.
 
