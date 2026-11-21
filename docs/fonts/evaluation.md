@@ -52,7 +52,7 @@ From [latin-font-spike.md](../re/latin-font-spike.md) and [font.md](../re/font.m
 | Pixel Operator | 16 px | 1 px | none | 7 | 15 | 6 | 13 | CC0-1.0 (single source) | Light, but the acute accent reads as a dot (`É` looks like `Ė`) |
 | Pixel Operator Mono | 16 px | 1 px | none | 8 | 15 | 7 | 13 | CC0-1.0 (single source) | Same accent problem |
 
-The captures are in `docs/fonts/images/`: `in-game-priority.png` (Sweet16mono, Spleen 8x16, Terminus 16), `in-game-compact.png` (Spleen 6x12, Terminus 12, Cozette, Monogram, Orp) and `in-game-other.png` (Unscii, Pixel Operator). They are crops of the text window at 3x.
+The captures are in [images/in-game/](images/in-game/): `in-game-priority.png` (Sweet16mono, Spleen 8x16, Terminus 16), `in-game-compact.png` (Spleen 6x12, Terminus 12, Cozette, Monogram, Orp) and `in-game-other.png` (Unscii, Pixel Operator). The folders of [images/](images/README.md) are explained in its README. They are crops of the text window at 3x.
 
 ### Why The Wide Fonts Are Judged On Stroke And Outline
 
@@ -77,7 +77,7 @@ Letters per 192-pixel row and rows needed for the 794-letter Spanish sample, wra
 | Sweet16 proportional, width + 1 px | 5.88 | 32.7 | 28 |
 | Fixed 6 px (Cozette, Monogram, Spleen 6x12 advance) | 6.00 | 32.0 | 29 |
 
-Width + 2 px (a one-pixel gap between the ink of neighbours plus the shared outline) is the legible setting in `images/simulated-light-background.png`; width + 1 px is denser but the outlines merge into a single dark pixel between letters. The gain is about 16 percent of text per row at +2 and about 36 percent at +1, against a hook that needs a pixel-level compositor (see [proportional-spacing.md](proportional-spacing.md)). A 6-pixel fixed pitch would give about the same density as +1 but needs the same compositor, because the engine places letters in 8-pixel cells.
+Width + 2 px (a one-pixel gap between the ink of neighbours plus the shared outline) is the legible setting in `images/simulated/simulated-light-background.png`; width + 1 px is denser but the outlines merge into a single dark pixel between letters. The gain is about 16 percent of text per row at +2 and about 36 percent at +1, against a hook that needs a pixel-level compositor (see [proportional-spacing.md](proportional-spacing.md)). A 6-pixel fixed pitch would give about the same density as +1 but needs the same compositor, because the engine places letters in 8-pixel cells.
 
 ## Discarded Or Deferred
 

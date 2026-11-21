@@ -1,0 +1,13 @@
+# Font Evaluation Images
+
+Every image is a PNG. Emulator captures and drawings made from the glyph data are kept in separate folders so that a drawing is never mistaken for evidence from the game.
+
+| Folder | What it holds | Source |
+| --- | --- | --- |
+| `native/` | Full emulator frames at the native resolution (256x224; the field window frames `field-<font>-native.png` and `field-<font>-nooutline-native.png` are 512x448 because the field is drawn in high resolution), kept for the fonts of the second-round comparison and its three references (the first round keeps only the cropped sheets in `in-game/`): `<font>-intro-native.png` for the two test lines of the intro and `<font>-page<N>-native.png` for the four pages that cover all 111 characters. | MesenCE capture, no processing |
+| `in-game/` | Crops of the text window from those frames, enlarged with nearest-neighbour: stacked comparisons of several fonts (`in-game-priority.png`, `in-game-compact.png`, `in-game-other.png`, `in-game-new-priority.png`, `in-game-new-extra.png`), the four pages of one font (`in-game-<font>-pages.png`) and the field message window: `in-game-field-window.png` (the original and four fonts) and `in-game-field-outline-compare.png` (with and without outline). | MesenCE capture, cropped and enlarged |
+| `in-game-fullscreen/` | The whole frame of the last page of one font, enlarged 3x with nearest-neighbour (`in-game-<font>-fullscreen.png`). | MesenCE capture, enlarged |
+| `charts/` | The 111 characters of the Spanish set in the 8x16 cell with the game scheme (fill 1, outline 3): `<font>-chart-light.png` over a light green background and `<font>-chart-diagnostic.png` with the lost outline pixels marked in red; wide glyphs and descenders are framed. | Drawn from the glyph data, **not** an emulator capture |
+| `simulated/` | Running text on a light or black background (`<font>-rows-light.png`, `<font>-rows-black.png`) and the proportional spacing comparison (`simulated-light-background.png`). | Drawn from the glyph data, **not** an emulator capture |
+
+File names start with the font (`sweet16mono`, `terminus16`, `departure-mono`, `gohufont-11`, `royalty-mono`, `scientifica`, `pixelzone`, `fairfax-sm`, `quest-square`, `dylex-7x13`, `spleen8x16`); the intro captures of the first round are grouped by size in the `in-game-priority`, `in-game-compact` and `in-game-other` sheets. The documents that use them are [evaluation.md](../evaluation.md) and [evaluation-round-2.md](../evaluation-round-2.md).
