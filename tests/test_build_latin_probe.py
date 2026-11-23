@@ -43,6 +43,37 @@ class PackLetterTests(unittest.TestCase):
         self.assertEqual(packed[:16], bytes(16))
 
 
+class ExtraLettersTests(unittest.TestCase):
+    def test_extra_marks_follow_the_core_set_without_moving_it(self):
+        self.assertEqual(probe.LATIN_CHARS, probe.CORE_CHARS + probe.EXTRA_CHARS)
+        self.assertEqual(probe.EXTRA_CHARS, "—…«»")
+        self.assertEqual(probe.letter_index("ñ"), 95)
+        self.assertEqual(probe.letter_index("Ü"), 110)
+        self.assertEqual([probe.letter_index(char) for char in probe.EXTRA_CHARS], [111, 112, 113, 114])
+
+    def test_a_font_without_the_extras_gets_a_visible_box(self):
+        art = {char: list(BLANK) for char in probe.CORE_CHARS}
+        data = probe.font_binary(art)
+        self.assertEqual(len(data), 32 * len(probe.LATIN_CHARS))
+        first_extra = data[32 * 111 : 32 * 112]
+        self.assertEqual(first_extra, probe.pack_letter(probe.placeholder_art()))
+        self.assertNotEqual(first_extra, bytes(32))
+
+    def test_a_missing_core_letter_is_still_an_error(self):
+        art = {char: list(BLANK) for char in probe.CORE_CHARS if char != "A"}
+        with self.assertRaises(ValueError):
+            probe.font_binary(art)
+
+    def test_extras_encode_as_pairs(self):
+        blob = probe.encode_latin("«Sí» — ok…")
+        self.assertIn(bytes([0xF9, 113, probe.letter_index("S")]), blob)
+
+    def test_project_font_draws_every_extra(self):
+        art = probe.project_font_art()
+        for char in probe.EXTRA_CHARS:
+            self.assertTrue(any("-" in row for row in art[char]), char)
+
+
 class ProjectFontTests(unittest.TestCase):
     def test_project_font_covers_the_game_set_and_packs(self):
         art = probe.project_font_art()

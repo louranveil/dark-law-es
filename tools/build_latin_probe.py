@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import build_custom_font
+from build_custom_font import CORE_CHARS, EXTRA_CHARS, LATIN_CHARS
 from script_builder import FreeSpace, PatchError, RomPatcher, relocate_blob
 from script_format import cpu_to_offset, read_all_tables, tokenize
 
@@ -44,8 +45,8 @@ LETTER_BYTES = 32  # tile superior (16) + tile inferior (16)
 GLYPH_WIDTH, GLYPH_HEIGHT = 8, 16
 PIXEL_VALUES = {".": 0, "-": 1, "+": 2, "#": 3}
 
-# Índice de letra = posición en esta cadena. ASCII imprimible primero, para que índice = código - 0x20.
-LATIN_CHARS = "".join(chr(c) for c in range(0x20, 0x7F)) + "ñÑ¿¡áéíóúüÁÉÍÓÚÜ"
+# Índice de letra = posición en LATIN_CHARS (build_custom_font.py): ASCII imprimible primero, para que índice = código - 0x20,
+# y detrás los signos del español y las marcas extra (— … « »), que se añadieron al final sin mover los índices anteriores.
 
 
 @dataclass(frozen=True)
@@ -119,11 +120,17 @@ def pack_letter(rows: list[str]) -> bytes:
     return bytes(data)
 
 
+def placeholder_art() -> list[str]:
+    """Marco hueco para una letra extra que la fuente no trae: se ve en el emulador y no se confunde con un espacio."""
+    return ["........"] * 3 + ["-" * 6 + ".."] + ["-....-.." for _ in range(8)] + ["-" * 6 + ".."] + ["........"] * 3
+
+
 def font_binary(art: dict[str, list[str]]) -> bytes:
-    missing = [char for char in LATIN_CHARS if char not in art]
+    """Las letras en el orden de ``LATIN_CHARS``; faltan las básicas es un error, una extra ausente sale como marco."""
+    missing = [char for char in CORE_CHARS if char not in art]
     if missing:
         raise ValueError(f"the font art lacks: {''.join(missing)!r}")
-    return b"".join(pack_letter(art[char]) for char in LATIN_CHARS)
+    return b"".join(pack_letter(art.get(char) or placeholder_art()) for char in LATIN_CHARS)
 
 
 def letter_index(char: str) -> int:

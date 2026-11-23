@@ -29,7 +29,11 @@ import sys
 from pathlib import Path
 
 CELL_WIDTH, CELL_HEIGHT = 8, 16
-LATIN_CHARS = "".join(chr(code) for code in range(0x20, 0x7F)) + "ñÑ¿¡áéíóúüÁÉÍÓÚÜ"
+# Las 111 letras con las que se probó el gancho (ASCII imprimible y los signos del español) y las marcas tipográficas
+# que se añaden detrás para que los índices de las primeras no cambien: raya, puntos suspensivos y comillas angulares.
+CORE_CHARS = "".join(chr(code) for code in range(0x20, 0x7F)) + "ñÑ¿¡áéíóúüÁÉÍÓÚÜ"
+EXTRA_CHARS = "—…«»"
+LATIN_CHARS = CORE_CHARS + EXTRA_CHARS
 NEIGHBORS = [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (0, 0)]
 
 Pixels = frozenset[tuple[int, int]]

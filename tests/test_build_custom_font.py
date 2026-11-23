@@ -92,6 +92,8 @@ class AssetTest(unittest.TestCase):
 
     def test_covers_every_character_of_the_game_set(self):
         self.assertEqual(font.missing_chars(self.glyphs), "")
+        self.assertEqual(font.missing_chars(self.glyphs, font.CORE_CHARS), "")
+        self.assertEqual((len(font.CORE_CHARS), len(font.EXTRA_CHARS)), (111, 4))
 
     def test_every_drawn_glyph_has_ink_except_the_space(self):
         blank = [char for char, ink in self.glyphs.items() if not ink]
@@ -130,7 +132,7 @@ class MainTest(unittest.TestCase):
             target = Path(folder) / "art.txt"
             code, out, _ = self.run_main("--source", str(ASSET), "--out", str(target))
             self.assertEqual(code, 0)
-            self.assertIn("covered 111 of 111", out)
+            self.assertIn("covered 115 of 115", out)
             self.assertTrue(target.read_text(encoding="utf-8").startswith("#! dark-law-latin-8x16 outline=full"))
 
     def test_missing_characters_fail_unless_allowed(self):
