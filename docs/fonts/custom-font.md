@@ -1,6 +1,6 @@
 # Font Of Our Own: Prototype 1
 
-Status: **prototype**, verified in MesenCE in the intro narration window (type 1, black) and in the field message window (type 2, brown) with all 111 characters of the game set. It is **not applied to the project**: nothing in the translation build uses it yet. The judgement of how it looks is subjective; the captures are there to make it.
+Status: **prototype**, chosen as the project font for now (see [decision.md](decision.md)); verified in MesenCE in the intro narration window (type 1, black) and in the field message window (type 2, brown) with all 111 characters of the game set. The probe builder uses it by default; the translation build does not exist yet. The judgement of how it looks is subjective; the captures are there to make it.
 
 ## Why
 

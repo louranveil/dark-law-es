@@ -2,6 +2,8 @@
 
 Status: **verified** for licences (read at the sources listed in [licenses.md](licenses.md) on 2026-11-20), character coverage, geometric fit and the in-game rendering of the narration window of the intro; **not verified** for other windows, bright backgrounds and any proportional rendering. The visual judgement is subjective. Nothing was replaced in the project: the engine hook and the build tools are the ones from the [latin font spike](../re/latin-font-spike.md), and no final font is chosen. The first round, with Sweet16mono, Spleen 8x16, Terminus and others, is in [evaluation.md](evaluation.md); this round uses the same method, the same tools and the same text so the results can be compared.
 
+The project later took a font of its own instead of either candidate, see [decision.md](decision.md).
+
 ## What Was Evaluated
 
 Priority: Royalty Mono, Scientifica, GohuFont (6x11), Pixelzone and Departure Mono. Additional: Fairfax SM, Dylex Terminal, Quest Square, Not Jam Novel and Cairopixel. They were compared with Sweet16mono, Terminus 16 and Spleen 8x16 from the first round.

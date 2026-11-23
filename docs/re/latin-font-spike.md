@@ -60,7 +60,7 @@ The narration window (loop 1) has 24 slots, so at 2 letters per slot a page hold
 
 ## Font Source
 
-The test font comes from rendering Consolas at 13 pixels with an outline added. It is a local proof-of-concept artifact, not included in this repository, and it cannot be redistributed. The final font must be drawn for the project or taken from one with a free licence, with accented capitals fitting the 16-row cell (they touch the top row here).
+The spike's first test font came from rendering Consolas at 13 pixels with an outline added; it was a local proof of concept and was never part of this repository. The project font is now one of our own, `assets/font/latin-8x16.txt`, with the 111 characters and accented capitals that fit the 16-row cell (see [../fonts/decision.md](../fonts/decision.md) and [../fonts/custom-font.md](../fonts/custom-font.md)); `tools/build_latin_probe.py` uses it by default.
 
 ## Open Items
 
@@ -68,6 +68,6 @@ The test font comes from rendering Consolas at 13 pixels with an outline added. 
 2. Proportional width: letters drawn at pixel offsets inside the 24-tile row, shifting and combining the 2bpp rows of adjacent letters. It would need a per-row pixel cursor, a width table and a change to what `$0A45` counts.
 3. Tokenizer and encoder: `tools/script_format.py` treats `F9` as unmeasured; translated blobs need either a Latin mode or the new token in the arity table when the input is a patched ROM.
 4. Verify `$0ADE` side effects and the free-space range.
-5. A real font, with its licence, and a decision on whether to keep Japanese glyphs for text that is not translated.
+5. Decide whether to keep Japanese glyphs for text that is not translated (the font and its licence are settled, see [../fonts/decision.md](../fonts/decision.md)).
 6. Other text paths (menus, item and monster names, battle messages) and whether they use this routine.
 7. The Latin glyph table in this spike is `LATIN_CHARS` in `tools/build_latin_probe.py`: ASCII from `0x20` plus `ñÑ¿¡áéíóúüÁÉÍÓÚÜ`.
