@@ -8,9 +8,9 @@ sustituye un mensaje (reubicado en el relleno de su banco) por texto que usa la 
 ``field`` (primer mensaje del campo, ventana de tipo 2). La ROM resultante solo sirve para
 mirarla en el emulador y se escribe fuera del repositorio.
 
-La fuente se recibe como arte de texto con --font-art (ver ``parse_font_art``); el
-repositorio no incluye ninguna: la de las pruebas locales sale de una tipografía del
-sistema que no se puede redistribuir.
+La fuente es la del proyecto (assets/font/latin-8x16.txt, ver docs/fonts/decision.md) con
+su contorno; con --font-art se sustituye por otro arte de texto (ver ``parse_font_art``),
+por ejemplo para comparar tipografías candidatas.
 
 Códigos de salida: 0 ROM escrita, 2 uso o configuración incorrectos.
 """
@@ -26,6 +26,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+import build_custom_font
 from script_builder import FreeSpace, PatchError, RomPatcher, relocate_blob
 from script_format import cpu_to_offset, read_all_tables, tokenize
 
@@ -94,6 +95,15 @@ def parse_font_art(text: str) -> dict[str, list[str]]:
             raise ValueError(f"bad glyph art for {header}")
         letters[chr(int(header[2:], 16))] = rows
     return letters
+
+
+PROJECT_FONT_SOURCE = Path(__file__).resolve().parents[1] / "assets" / "font" / "latin-8x16.txt"
+
+
+def project_font_art(source: Path = PROJECT_FONT_SOURCE) -> dict[str, list[str]]:
+    """Arte de la fuente del proyecto: la fuente de tinta con el contorno del juego (valor 3)."""
+    glyphs = build_custom_font.parse_source(source.read_text(encoding="utf-8"))
+    return build_custom_font.build_art(glyphs, with_outline=True)
 
 
 def pack_letter(rows: list[str]) -> bytes:
@@ -226,7 +236,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--rom", default=os.environ.get("DARK_LAW_ROM"), help="ROM original (o DARK_LAW_ROM)")
     parser.add_argument("--asar", default=os.environ.get("ASAR"), help="ejecutable de asar (o ASAR)")
-    parser.add_argument("--font-art", required=True, help="arte de la fuente latina (ver parse_font_art)")
+    parser.add_argument("--font-art", help="arte de otra fuente latina (ver parse_font_art); por defecto la del proyecto")
     parser.add_argument("--scenario", choices=sorted(SCENARIOS), default="intro", help="mensaje que se sustituye")
     parser.add_argument("--text", help="texto del mensaje (por defecto el del escenario; \\n separa las líneas)")
     parser.add_argument("--out", required=True, help="ruta de la ROM de prueba (fuera del repositorio)")
@@ -235,7 +245,10 @@ def main(argv: list[str] | None = None) -> int:
         print("error: pass --rom and --asar, or set DARK_LAW_ROM and ASAR", file=sys.stderr)
         return 2
     rom = Path(arguments.rom).read_bytes()
-    art = parse_font_art(Path(arguments.font_art).read_text(encoding="utf-8"))
+    if arguments.font_art:
+        art = parse_font_art(Path(arguments.font_art).read_text(encoding="utf-8"))
+    else:
+        art = project_font_art()
     out = Path(arguments.out)
     text = None if arguments.text is None else arguments.text.replace("\\n", "\n")
     patched = build_probe(rom, art, SCENARIOS[arguments.scenario], text, Path(arguments.asar), out)

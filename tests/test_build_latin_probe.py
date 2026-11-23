@@ -43,6 +43,24 @@ class PackLetterTests(unittest.TestCase):
         self.assertEqual(packed[:16], bytes(16))
 
 
+class ProjectFontTests(unittest.TestCase):
+    def test_project_font_covers_the_game_set_and_packs(self):
+        art = probe.project_font_art()
+        self.assertEqual(len(probe.font_binary(art)), 32 * len(probe.LATIN_CHARS))
+
+    def test_project_font_has_the_game_outline(self):
+        art = probe.project_font_art()
+        self.assertTrue(any("#" in row for row in art["A"]))
+        self.assertTrue(any("-" in row for row in art["A"]))
+
+    def test_project_font_art_round_trips_through_the_art_format(self):
+        import build_custom_font as custom
+
+        art = probe.project_font_art()
+        text = custom.format_art(art, "test")
+        self.assertEqual(probe.parse_font_art(text), art)
+
+
 class ParseArtTests(unittest.TestCase):
     def test_round_trip(self):
         text = "U+0041\n" + "\n".join(["#......."] + ["." * 8] * 15) + "\n"
