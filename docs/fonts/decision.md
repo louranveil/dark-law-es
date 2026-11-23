@@ -9,7 +9,7 @@ The translation uses a font of our own, **Dark Law Latin**, drawn for the 8x16 c
 ## Why
 
 - It was designed for the cell: capitals 6 pixels wide, lowercase 5, so that the game outline fits on both sides, and no glyph loses ink (see [custom-font.md](custom-font.md)).
-- It has all 111 characters of the hook's set drawn in the same hand, including the dash, the ellipsis and the Spanish quotes that Sweet16mono lacks, and the accent marks follow one rule (an empty row between the mark and the letter).
+- It has all 115 characters of the hook's set drawn in the same hand (the 111 of the spike and `— … « »`, which Sweet16mono lacks), and the accent marks follow one rule (an empty row between the mark and the letter).
 - Its licence is the repository's MIT: no attribution block, no reserved font name and no third-party terms to carry in the patch documentation ([licenses.md](licenses.md) only matters again if a fallback is adopted).
 - Seen in MesenCE in the intro window and in the field message window next to Sweet16mono, it reads at least as well; that is a visual, subjective judgement from one test text ([custom-font.md](custom-font.md)).
 
@@ -23,7 +23,7 @@ The cost is that it is a first draft by one author with no typographic review, a
 
 ## Not Done
 
-- There is still no build of the translation itself: the probe builder writes a hook, the font and one test message. How the final patch writes the hook, the font and the translated text is the job of the extract, translate and reinsert pipeline, which is not written. The font is ready to be an input of it: 111 letters of 32 bytes at `$D2:C000`, as in [../re/latin-font-spike.md](../re/latin-font-spike.md).
-- The hook does not draw `— … « »` (drawn in the source, not in the game set), so the translation cannot use them yet. Adding them means growing `LATIN_CHARS`, the table in bank `$D2` (4 more letters, 128 bytes) and the translated text's character mapping, and testing it in the emulator.
+- There is still no build of the translation itself: the probe builder writes a hook, the font and one test message. How the final patch writes the hook, the font and the translated text is the job of the extract, translate and reinsert pipeline, which is not written. The font is ready to be an input of it: 115 letters of 32 bytes at `$D2:C000`, as in [../re/latin-font-spike.md](../re/latin-font-spike.md).
+- The letters are the hook's whole set now (115, `$D2:C000`-`$D2:CE60`); the translated text's character mapping, which will turn the Spanish script into `F9 a b` tokens, is part of the pipeline that does not exist yet.
 - Stroke weight: one pixel as drawn. A second source for two-pixel strokes was not drawn.
 - Only window types 1 and 2 were seen with Latin text; menus and other windows that draw glyphs through other routines are untested.

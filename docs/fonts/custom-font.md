@@ -9,7 +9,7 @@ The evaluations ([evaluation.md](evaluation.md), [evaluation-round-2.md](evaluat
 ## Constraints That Fix The Design
 
 - **Cell:** 8x16, 2 bpp, fill 1 and outline 3, fixed advance of 8 pixels (24 letters per row in the narration window and 64 per page in the field, see [../re/window-types.md](../re/window-types.md)). Proportional spacing is a renderer change and is out of scope.
-- **Glyph set:** the 111 characters the hook draws (printable ASCII, `ñÑ¿¡áéíóúüÁÉÍÓÚÜ`), plus four typographic marks that Spanish dialogue wants and that the hook does not draw yet: `— … « »` and the dotless `ı` used as a base (they are in the source, not in the game set).
+- **Glyph set:** the 111 characters of the spike (printable ASCII, `ñÑ¿¡áéíóúüÁÉÍÓÚÜ`) plus four typographic marks that Spanish dialogue wants, `— … « »`, appended at indexes 111-114 so the earlier indexes do not move: 115 letters in all (`CORE_CHARS` and `EXTRA_CHARS` in `tools/build_custom_font.py`). The dotless `ı`, used as a base for `í`, is in the source but not in the set.
 - **Outline:** generated from the ink by the build tool, not drawn. It is optional (`--outline none`) and clipped by the cell where the ink touches an edge.
 - **Vertical metrics:** capitals and ascenders in rows 3-12 (10 pixels), x-height from row 6 (7 pixels), descenders to row 15, accents on capitals in rows 0-1 and on lowercase letters in rows 3-4, always with an empty row between the mark and the letter. Cap height and x-height equal those of Sweet16mono, so the two are comparable at the same size.
 - **Horizontal metrics:** capitals 6 pixels wide (columns 1-6), lowercase 5 (columns 1-5), so that a full outline fits in the cell on both sides.
@@ -50,7 +50,7 @@ Numbers from the sources and from the build report (`build_custom_font.py` and t
 
 | | Our font, prototype 1 | Sweet16mono |
 | --- | --- | --- |
-| Characters of the game set | 111 of 111 | 111 of 111 (dash and ellipsis missing) |
+| Characters of the game set | 115 of 115 | 113 of 115 (dash and ellipsis missing) |
 | Cap height / x-height | 10 / 7 | 10 / 7 |
 | Mean ink width of the letters | 5.3 pixels | 6.1 pixels |
 | Mean ink pixels per letter | 19.3 | 19.9 |
@@ -77,7 +77,7 @@ What the captures show:
 
 - The source is a first draft by one author with no typographic review; the quality of the symbols is below that of the letters.
 - Only two windows were rendered with it (type 1 and type 2). The other windows and the menus that draw glyphs through other routines were not tested; a light window was not found.
-- The four extra marks (`— … « »`) are drawn but the hook does not draw them; they need the letter set of the hook to grow before they can be used (see [../re/latin-font-spike.md](../re/latin-font-spike.md)).
+- The four extra marks work in the hook (`in-game/in-game-custom-extras.png`: both windows, the intro line lost its last character only because it had 25 letters in a 24-letter row). A font passed with `--font-art` that lacks them gets a hollow box in their place.
 - The comparison with Sweet16mono and the other candidates is visual and from one test text; no reader tested it.
 - The throwaway scripts that built the pages, drove the emulator and composed the images are not in the repository; the build tools and the probe and capture tools are.
 
@@ -85,4 +85,4 @@ What the captures show:
 
 1. Show the retouched symbols to a second reader; `%` is the weakest at 1x.
 2. Decide the stroke weight with the user (1 pixel as drawn, or a second source drawn for 2 pixels) and whether to keep the outline in all windows.
-3. Decide whether the project takes this font or Sweet16mono or Departure Mono, and then grow the hook's letter set for `— … « »` if the text needs them.
+3. Write the pipeline that turns the Spanish script into `F9 a b` tokens with this set (see [decision.md](decision.md)).
