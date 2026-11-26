@@ -50,7 +50,7 @@ The build takes about two seconds. The runs left as they were are the ones of on
 
 **Text read back from RAM (verified).** With `--check-buffers`, when a marker run is drawn the tool reads the tile buffer of each slot from WRAM (the buffer address table of the loop, `$D1:46DB` or `$D1:48B3`, 32 bytes at the buffer and 32 at `+0x100`) and compares it with the two font letters of the marker. The check passed for 6 marker runs of the first build (2 in type 2 in the field, 4 in type 1 in the intro) and for 36 of 37 runs of the cold intro. The 37th (`$E2:F36F` run 1) was reported as wrong because the first version of the check assumed that the marker starts at slot 0, while that run follows another run on the same page (the counter was 5 for a 4-slot marker). The check now starts at the counter minus the marker length. That fix is covered by unit tests but the 18000-frame route was not run again in the emulator, so for that one run the evidence is only a guess that fits the counter. Ruler runs are not checked. So the markers do show their ids and no screenshot was needed.
 
-**Sessions.** MesenCE sessions started at the same moment can fail with `WinError 10048` (the local bridge port is chosen and then used by another session). The tool retries three times; start one session at a time for long runs.
+**Sessions.** MesenCE sessions started at the same moment failed with `WinError 10048` in the first passes (the local bridge port is chosen, released and only then bound by the emulator). The tool retries on that error. On 2026-11-26 the failure did not reproduce: 24 simultaneous startups, three sessions polling while 15 others started, and three `--shard` runs of `force_messages.py` at once all finished without it. The cause was not identified; the bridge client opens one TCP connection per request (about 40 per second per session), which is a suspect that was not confirmed. Shards are usable; if `10048` returns, fall back to one session at a time.
 
 ## Forced Drawing
 
@@ -65,7 +65,7 @@ The build takes about two seconds. The runs left as they were are the ones of on
 - The state is always the field in area 0. Text drawing does not depend on the area, but anything a blob does besides text (a nested message through `EE` or `C2`, a map change `D9`) runs in that state. Message ids that a script calls by id are resolved with the tables of area 0.
 - The first window of a forced blob opens in whatever the screen mode is: in type 1 the loop writes the narration tilemap addresses, which are not the ones of the 512-dot field screen, so the pixels are meaningless; the RAM counters and tile buffers are not affected and are what is read.
 - Only the message role of the map is covered (1548 entries). Event, global and called scripts are not in the map.
-- Several emulator sessions at the same time fail to start (`WinError 10048`) even with retries and random pauses: run one session at a time. A full pass of all 1548 entries takes about 40 minutes at poll 2.
+- A full pass of all 1548 entries takes about 40 minutes in one session at poll 2. Three parallel shards forced 38 entries each in about 35 seconds without `WinError 10048` (see Sessions), so a sharded pass should be faster; it was not timed over the whole map.
 
 ## E7 Command
 
@@ -198,4 +198,4 @@ Without `--table` the whole map is forced (1548 entries); the full pass at `--ma
 6. Forced drawing ran all 1548 rewritten blobs of the `--all` marker ROM through the engine in place (4670 runs drawn, none broken); scripts that depend on offsets inside a blob (none is known) are not covered by it.
 7. A faster driver: a write watch on the top of the script stack would catch every run at any poll interval; polling costs about 15 ms per call, one call per poll.
 8. Free space: the rulers use `$E2:F8A6`-`$E2:FFFF` and `$E7:FC81`-`$E7:FFFF` only because earlier spikes did. That nothing else reads them is still unverified (text-engine.md, Open Items 4).
-9. Several emulator sessions at once cannot be used to speed this up (`WinError 10048`); a bridge that picks its port safely would allow shards (`--shard`).
+9. The `WinError 10048` seen in the first passes is not reproducible now; time a full sharded pass and keep the retry in case it comes back.
