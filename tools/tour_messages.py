@@ -362,6 +362,8 @@ class RunInfo:
     original_rows: list[int]
     original_bytes: int
     opener: str | None = None  # último ``C0``/``C1`` del esqueleto antes del tramo
+    page_commands: tuple[str, ...] = ()  # códigos de los comandos entre ese ``C0``/``C1`` y el tramo (``E7``, ``C3``...)
+    predicted_counter: int | None = None  # contador de celdas que debe marcar el tipo de ventana del opener al terminar el tramo (``predict_page_counters``)
 
     @property
     def key(self) -> tuple[str, int]:
@@ -378,6 +380,56 @@ def run_openers(skeleton: str) -> dict[int, str | None]:
         elif match.group(1) in OPENER_TYPE:
             last = match.group(1)
     return openers
+
+
+def run_page_commands(skeleton: str) -> dict[int, tuple[str, ...]]:
+    """Para cada tramo, los códigos de los comandos que hay entre el último ``C0``/``C1`` y el tramo."""
+    commands: dict[int, tuple[str, ...]] = {}
+    since: list[str] = []
+    for match in SKELETON_TOKEN.finditer(skeleton):
+        if match.group(2) is not None:
+            commands[int(match.group(2))] = tuple(since)
+        elif match.group(1) in OPENER_TYPE:
+            since = []
+        else:
+            since.append(match.group(1))
+    return commands
+
+
+def predict_page_counters(skeleton: str, rows_by_run: dict[int, list[int]]) -> dict[int, int | None]:
+    """El contador de celdas tras cada tramo, recorriendo el esqueleto como lo hace el motor (modelo de filas de docs/re/message-tour.md).
+
+    ``C0``/``C1`` abren la página (contador a cero y tipo de ventana), ``C3`` salta a la celda de inicio de la segunda línea, ``E5 nn``
+    suma ``nn``, un glifo suelto del esqueleto suma una celda y un tramo suma su primera línea y, por cada ``C3`` interno, salta a la
+    celda de inicio más esa línea. El contador no pasa del límite de la ventana: el bucle descarta los glifos que no caben. Un tramo sin
+    ``C0``/``C1`` antes da ``None``.
+    """
+    counters: dict[int, int | None] = {}
+    kind: int | None = None
+    slot = 0
+    for match in re.finditer(r"<([0-9A-F]{2})((?: [0-9A-F]{2})*)>|\{(\d+)\}", skeleton):
+        if match.group(3) is not None:
+            number = int(match.group(3))
+            rows = rows_by_run.get(number)
+            if kind is None or not rows:
+                counters[number] = None
+                continue
+            limit = CODE_SLOT_LIMITS[kind]
+            slot = min(slot + rows[0], limit)
+            for row in rows[1:]:
+                slot = min(ROW_START[kind] + row, limit)
+            counters[number] = slot
+            continue
+        code = int(match.group(1), 16)
+        if match.group(1) in OPENER_TYPE:
+            kind, slot = OPENER_TYPE[match.group(1)], 0
+        elif code < 0xC0:
+            slot += 1
+        elif kind is not None and match.group(1) == "C3":
+            slot = ROW_START[kind]
+        elif kind is not None and match.group(1) == "E5" and match.group(2):
+            slot = min(slot + int(match.group(2).split()[0], 16), CODE_SLOT_LIMITS[kind])
+    return counters
 
 
 def parse_address(text: str) -> int:
@@ -400,11 +452,15 @@ class RunIndex:
         self.by_address: dict[int, RunInfo] = {}
         for entry in document["entries"]:
             openers = run_openers(entry["skeleton"])
+            page_commands = run_page_commands(entry["skeleton"])
+            counters = predict_page_counters(entry["skeleton"], {run["number"]: run["original_rows"] for run in entry["runs"]})
             for run in entry["runs"]:
                 info = RunInfo(
                     entry["id"], run["number"], parse_address(run["start"]), parse_address(run["end"]), run["marker"], run["ruler"], run["letters"],
                     entry["slots"], run["original_rows"], run["original_bytes"],
                     openers.get(run["number"]),
+                    page_commands.get(run["number"], ()),
+                    counters.get(run["number"]),
                 )
                 self.runs[info.key] = info
                 for address in (info.start, info.end):
@@ -494,9 +550,14 @@ def summarize(visits: list[Visit], index: RunIndex) -> dict:
     by_type: dict[int, dict] = {}
     japanese: dict = {"checked": 0, "differ": []}
     opener_types: dict[str, dict[str, int]] = {}
+    after_e7: dict[str, dict[str, int]] = {}
     for visit in drawn.values():
         counts = opener_types.setdefault(str(visit.run.opener), {})
         counts[str(visit.window_type)] = counts.get(str(visit.window_type), 0) + 1
+        if "E7" in visit.run.page_commands:
+            by_opener = after_e7.setdefault(str(visit.run.opener), {})
+            by_opener[str(visit.window_type)] = by_opener.get(str(visit.window_type), 0) + 1
+    marked_map = any(info.marker is not None for info in index.runs.values())
     for visit in drawn.values():
         stats = by_type.setdefault(
             visit.window_type, {"runs": 0, "max_slots": 0, "unmeasured": 0, "ruler": [], "original_max_row": 0, "original_max_slots": 0}
@@ -511,8 +572,9 @@ def summarize(visits: list[Visit], index: RunIndex) -> dict:
         stats["max_slots"] = max(stats["max_slots"], slots)
         if visit.run.ruler:
             stats["ruler"].append({"id": visit.run.entry_id, "run": visit.run.number, "slots": slots, "letters": visit.run.letters})
-        elif visit.run.marker is None:  # ROM original: el contador es el del texto japonés, que se compara con las líneas del mapa
-            expected = predicted_slots(visit.run.original_rows, visit.window_type)
+        elif visit.run.marker is None and not marked_map:  # ROM original: el contador es el del texto japonés, que se compara con las líneas del mapa
+            same_type = OPENER_TYPE.get(str(visit.run.opener)) == visit.window_type
+            expected = visit.run.predicted_counter if same_type and visit.run.predicted_counter is not None else predicted_slots(visit.run.original_rows, visit.window_type)
             japanese["checked"] += 1
             if expected != slots:
                 japanese["differ"].append({"id": visit.run.entry_id, "run": visit.run.number, "measured": slots, "predicted": expected})
@@ -528,6 +590,7 @@ def summarize(visits: list[Visit], index: RunIndex) -> dict:
         "entries with several window types": sorted(entry for entry, kinds in entry_types.items() if len(kinds) > 1),
         "original text checked against the row model": japanese,
         "drawn runs by opening command and window type": opener_types,
+        "drawn runs with an E7 between the opening command and the run": after_e7,
         "unreached runs": [
             {"id": info.entry_id, "run": info.number, "slots": info.slots} for info in sorted(unreached_runs, key=lambda i: (i.start, i.number))
         ],
@@ -613,6 +676,7 @@ def format_report(visits: list[Visit], index: RunIndex) -> str:
             f"(C3 starts row 2 at slot 12 in type 1 and 16 in type 2); differing: {checked['differ']}"
         )
     lines.append(f"drawn runs by opening command and window type: {summary['drawn runs by opening command and window type']}")
+    lines.append(f"drawn runs with an E7 between the opening command and the run: {summary['drawn runs with an E7 between the opening command and the run']}")
     lines.append("drawn runs (first visit of each):")
     seen: set[tuple[str, int]] = set()
     for visit in visits:
@@ -634,7 +698,7 @@ def format_report(visits: list[Visit], index: RunIndex) -> str:
     return "\n".join(lines)
 
 
-def write_log(path: Path, recorder: Recorder, route: dict, rom: Path, buffer_checks: list[dict] | None = None) -> None:
+def write_log(path: Path, recorder: Recorder, route: dict, rom: Path, buffer_checks: list[dict] | None = None, extra: dict | None = None) -> None:
     digest = hashlib.sha1(rom.read_bytes()).hexdigest().upper()
     document = {
         "format": LOG_FORMAT,
@@ -647,6 +711,8 @@ def write_log(path: Path, recorder: Recorder, route: dict, rom: Path, buffer_che
     }
     if buffer_checks is not None:
         document["buffer_checks"] = buffer_checks
+    if extra:
+        document.update(extra)  # claves de otras herramientas (por ejemplo ``forced``); ``read_log`` las ignora
     path.write_text(json.dumps(document) + "\n", encoding="utf-8", newline="\n")
 
 

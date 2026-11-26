@@ -441,6 +441,20 @@ class OpenerTests(unittest.TestCase):
     def test_a_run_with_no_opener_has_none(self):
         self.assertEqual(tour.run_openers("<C8 40>{0}<FF>"), {0: None})
 
+    def test_the_commands_between_the_opener_and_each_run_are_listed(self):
+        skeleton = "<C8 40><C0><E7 14 01>{0}<C4><C0><C3>{1}<C4><C1>{2}<FF>"
+        self.assertEqual(tour.run_page_commands(skeleton), {0: ("E7",), 1: ("C3",), 2: ()})
+
+    def test_the_summary_counts_the_runs_drawn_after_an_e7_by_window_type(self):
+        runs = [
+            {"number": 0, "start": "E7:379C", "end": "E7:37AE", "marker": "E7379B.0", "letters": 8, "ruler": False, "original_bytes": 26, "original_rows": [13]},
+            {"number": 1, "start": "E7:37AF", "end": "E7:37C0", "marker": "E7379B.1", "letters": 8, "ruler": False, "original_bytes": 20, "original_rows": [13]},
+        ]
+        index = tour.RunIndex(map_document(runs, skeleton="<C0><E7 14 01>{0}<C4><C0>{1}<C7>"))
+        visits = tour.track_visits([sample(1, 0xE737AE, 1, (4, 0, 0)), sample(2, 0), sample(3, 0xE737C0, 1, (4, 0, 0))], index)
+        self.assertEqual(tour.summarize(visits, index)["drawn runs with an E7 between the opening command and the run"], {"C0": {"1": 1}})
+        self.assertIn("with an E7", tour.format_report(visits, index))
+
     def test_the_index_carries_the_opener(self):
         index = tour.RunIndex(map_document())
         self.assertEqual({info.opener for info in index.runs.values()}, {"C1"})
@@ -457,6 +471,41 @@ class OpenerTests(unittest.TestCase):
         self.assertEqual((runs["0"]["max"], runs["0"]["evidence"]), (48, "code"))
         self.assertEqual((runs["1"]["window_type"], runs["1"]["max"]), ([2], 64))
         self.assertIn("predicted", runs["1"]["evidence"])
+
+
+class PageCounterTests(unittest.TestCase):
+    def test_a_run_after_a_line_break_command_starts_at_the_second_row(self):
+        counters = tour.predict_page_counters("<C0><C3><E7 14 01>{0}<C4>", {0: [10]})
+        self.assertEqual(counters, {0: 22})
+
+    def test_a_run_that_continues_the_page_adds_to_the_previous_one(self):
+        counters = tour.predict_page_counters("<C0>{0}<F6 14>{1}<C4><C0>{2}<C7>", {0: [0, 5], 1: [5], 2: [3]})
+        self.assertEqual(counters, {0: 17, 1: 22, 2: 3})
+
+    def test_a_new_opener_resets_the_counter_and_sets_the_window_type(self):
+        counters = tour.predict_page_counters("<C1>{0}<C0>{1}", {0: [13, 10], 1: [0, 12]})
+        self.assertEqual(counters, {0: 26, 1: 24})
+
+    def test_the_counter_saturates_at_the_window_limit(self):
+        self.assertEqual(tour.predict_page_counters("<C0>{0}", {0: [0, 13]}), {0: 24})
+        self.assertEqual(tour.predict_page_counters("<C1>{0}", {0: [16, 20]}), {0: 32})
+
+    def test_skips_and_loose_glyphs_add_slots(self):
+        self.assertEqual(tour.predict_page_counters("<C0><E5 03><00>{0}", {0: [4]}), {0: 8})
+
+    def test_a_run_without_an_opener_has_no_prediction(self):
+        self.assertEqual(tour.predict_page_counters("{0}<C0>{1}", {0: [4], 1: [4]}), {0: None, 1: 4})
+
+    def test_the_index_carries_the_prediction_and_the_summary_uses_it_for_the_original_text(self):
+        runs = [
+            {"number": 0, "start": "E7:379C", "end": "E7:37AE", "marker": None, "letters": None, "ruler": False, "original_bytes": 26, "original_rows": [0, 5]},
+            {"number": 1, "start": "E7:37AF", "end": "E7:37C0", "marker": None, "letters": None, "ruler": False, "original_bytes": 20, "original_rows": [5]},
+        ]
+        index = tour.RunIndex(map_document(runs, skeleton="<C0>{0}<F6 14>{1}<C7>"))
+        self.assertEqual([info.predicted_counter for info in index.runs.values()], [17, 22])
+        visits = tour.track_visits([sample(1, 0xE737AE, 1, (17, 0, 0)), sample(2, 0), sample(3, 0xE737C0, 1, (22, 0, 0))], index)
+        checked = tour.summarize(visits, index)["original text checked against the row model"]
+        self.assertEqual((checked["checked"], checked["differ"]), (2, []))
 
 
 class OriginalRomModelTests(unittest.TestCase):
