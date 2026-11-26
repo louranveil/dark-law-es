@@ -190,3 +190,5 @@ pyrightconfig.json
 # Local working directories
 /work/
 /out/
+# Script dumps (tools/extract_script.py) contain the original Japanese text: not committed until the project decides how to publish translation files.
+/text/
