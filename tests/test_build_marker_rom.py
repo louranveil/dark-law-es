@@ -279,6 +279,22 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(marker.select_entries(entries, marker.SLICE_TABLES), [good, other])
         self.assertEqual(marker.select_entries(entries, None), [good, other, outside])
 
+    def test_roles_choose_events_and_global_scripts(self):
+        message = make_entry(0xE20100, [text_run(5)], "<C0>{0}<FF>", 9, ["E2EE73#0"])
+        event = make_entry(0xE20600, [text_run(5)], "<C0>{0}<FF>", 9, ["E2F393#0"])
+        event.role = "events"
+        script = make_entry(0xE20700, [text_run(5)], "<C1>{0}<FF>", 9, ["EFC1FB#0"])
+        script.role = "global"
+        entries = [message, event, script]
+        self.assertEqual(marker.select_entries(entries, None), [message])
+        self.assertEqual(marker.select_entries(entries, None, ("events", "global")), [event, script])
+        self.assertEqual(marker.select_entries(entries, None, ("messages", "global")), [message, script])
+
+    def test_the_command_line_rejects_an_unknown_role(self):
+        with tempfile.TemporaryDirectory() as folder:
+            code = marker.main(["--rom", "x.sfc", "--asar", "x", "--table", "x.json", "--out", str(Path(folder) / "m.sfc"), "--roles", "weapons"])
+        self.assertEqual(code, 2)
+
 
 class RepositoryGuardTests(unittest.TestCase):
     def test_paths_inside_the_repository_are_detected(self):

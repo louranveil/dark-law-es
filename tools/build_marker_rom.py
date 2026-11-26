@@ -288,6 +288,7 @@ def build_marker_rom(
     tables: tuple[int, ...] | None = SLICE_TABLES,
     ruler_ids: tuple[str, ...] = (),
     ruler_letters: int = RULER_DEFAULT_LETTERS,
+    roles: tuple[str, ...] = ("messages",),
 ) -> tuple[bytes, dict]:
     """Devuelve la ROM de marcadores y su mapa. ``scratch`` es el fichero temporal sobre el que trabaja asar."""
     for low, high in (probe.CODE_RANGE, (probe.FONT_START, probe.FONT_END)):
@@ -295,7 +296,7 @@ def build_marker_rom(
         if region.count(FILLER) != len(region):
             raise PatchError(f"free space 0x{low:06X}-0x{high:06X} is not all 0xFF in this ROM")
     entries, _ = ex.build_entries(rom, glyph_table)
-    selected = select_entries(entries, tables)
+    selected = select_entries(entries, tables, roles)
     known = {entry.id for entry in selected}
     unknown = [ruler for ruler in ruler_ids if ruler not in known]
     if unknown:
@@ -384,12 +385,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--map", type=Path, help="mapa JSON de los tramos (por defecto <out>.map.json)")
     parser.add_argument("--map-only", action="store_true", help="solo el mapa de tramos de la ROM original, sin escribir ninguna ROM")
     parser.add_argument("--all", action="store_true", help="todas las entradas ok de mensajes, no solo el corte vertical")
+    parser.add_argument("--roles", default="messages", help="roles de las entradas que se marcan, separados por comas: messages, events, global (por defecto messages)")
     parser.add_argument("--ruler", action="append", default=[], metavar="ID", help="entrada que lleva regla (reubicada), por ejemplo E2:EE93")
     parser.add_argument("--ruler-letters", type=int, default=RULER_DEFAULT_LETTERS, help="letras de la regla (par)")
     parser.add_argument("--font-art", help="arte de otra fuente latina; por defecto la del proyecto")
     arguments = parser.parse_args(argv)
     if not arguments.rom or not (arguments.asar or arguments.map_only):
         print("error: pass --rom and --asar, or set DARK_LAW_ROM and ASAR", file=sys.stderr)
+        return 2
+    roles = tuple(role.strip() for role in arguments.roles.split(",") if role.strip())
+    if not roles or not set(roles) <= {"messages", "events", "global", "called scripts"}:
+        print("error: --roles takes a comma-separated list of messages, events, global, called scripts", file=sys.stderr)
         return 2
     out = arguments.out
     map_path = out if arguments.map_only else arguments.map or out.with_name(out.name + ".map.json")
@@ -405,14 +411,14 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if arguments.map_only:
         entries, _ = ex.build_entries(rom, glyph_table)
-        mapped = original_map(select_entries(entries, None if arguments.all else SLICE_TABLES))
+        mapped = original_map(select_entries(entries, None if arguments.all else SLICE_TABLES, roles))
         document = {"format": MAP_FORMAT, "original_sha1": hashlib.sha1(rom).hexdigest().upper(), "scope": "original", "summary": summarize(mapped), "entries": mapped}
         map_path.write_text(json.dumps(document, indent=1) + "\n", encoding="utf-8", newline="\n")
         print(f"map of the original ROM: {map_path}")
         return 0
     try:
         final, document = build_marker_rom(
-            rom, glyph_table, art, Path(arguments.asar), out, None if arguments.all else SLICE_TABLES, tuple(arguments.ruler), arguments.ruler_letters
+            rom, glyph_table, art, Path(arguments.asar), out, None if arguments.all else SLICE_TABLES, tuple(arguments.ruler), arguments.ruler_letters, roles
         )
     except (PatchError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
