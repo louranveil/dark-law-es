@@ -29,11 +29,11 @@ Verified measure of loop 2: the first field message has 13 glyphs on its first r
 
 ## Line Break And Skips
 
-`C3` is handled at `$D1:4E75` by window type (`$0A4C`): type 1 sets slot `$0A45` to 12 (the start of the second row); types 2, 5 and 6 set `$0A47` to `$10` (the start of the second row of loop 2); types 3 and 4 do nothing (**verified** in the code; only types 1 and 2 were run). A page that fills a row exactly and then sends `C3` does not leave a blank row in type 1 (seen in the emulator).
+`C3` is handled at `$D1:4E75` by window type (`$0A4C`): type 1 sets slot `$0A45` to 12 (the start of the second row); types 2, 5 and 6 set `$0A47` to `$10` (the start of the second row of loop 2); types 3 and 4 do nothing (**verified** in the code; only types 1 and 2 were run). A page that fills a row exactly and then sends `C3` does not leave a blank row in type 1 (seen in the emulator). Glyphs past the last slot of a window are dropped, not wrapped: loop 1 compares the counter `$0A45` with `$18` at `$D1:4610` and skips the draw without incrementing when it is reached (code; the measured counters saturate at 24 in the original and in ruler runs, see [message-tour.md](message-tour.md#slot-limits-verified-with-rulers)).
 
 ## Where The Types Are Set
 
-`$0A4C` is written by the state machine of the command dispatcher. A scan of the ROM for `STA $0A4C` finds these instructions (the value is the immediate loaded just before): type 1 at `$D1:21EA`, `2BAE`, `2C9B`, `$C1:0064`, `$C4:EFC5`, `$C4:F12C`; type 2 at `$D1:223D`, `2C27`, `2CB6`, `35BA`, `4501`; type 3 at `$D1:0579`, `1AC1`; type 4 at `$D1:220F`, `2C80`, `2CDD`; type 5 at `$D1:2225`, `371C`; type 6 at `$D1:3844`; and a `STZ` (type 0) at `$D1:4453`. A write watch on `$0A4C` shows only the value 1 through the whole intro and the character creation (the writers it reports are the instructions before `$D1:2BB1` and `$D1:2C9E`, the program counter after each store), and the values 0, 1 and 2 during the first minutes of play in the field. Types 3 to 6 were not reached. Which command selects each type is not decoded.
+`$0A4C` is written by the state machine of the command dispatcher. A scan of the ROM for `STA $0A4C` finds these instructions (the value is the immediate loaded just before): type 1 at `$D1:21EA`, `2BAE`, `2C9B`, `$C1:0064`, `$C4:EFC5`, `$C4:F12C`; type 2 at `$D1:223D`, `2C27`, `2CB6`, `35BA`, `4501`; type 3 at `$D1:0579`, `1AC1`; type 4 at `$D1:220F`, `2C80`, `2CDD`; type 5 at `$D1:2225`, `371C`; type 6 at `$D1:3844`; and a `STZ` (type 0) at `$D1:4453`. A write watch on `$0A4C` shows only the value 1 through the whole intro and the character creation (the writers it reports are the instructions before `$D1:2BB1` and `$D1:2C9E`, the program counter after each store), and the values 0, 1 and 2 during the first minutes of play in the field. Types 4 to 6 were not reached. Which command selects each type is decoded only in part: `C0` gives type 1 and `C1` gives type 2 (both verified in [message-tour.md](message-tour.md#opening-command-and-window-type-code-agreed-by-the-runs)), and `C2` (the yes/no choice, handler `$D1:0577`) writes 3 at `$D1:0579`, which the forced drawing of message blobs saw in every entry whose `C2` was reached ([message-tour.md](message-tour.md#measurements)). Which text loop type 3 uses is not measured.
 
 ## Other Text Paths
 
@@ -41,7 +41,7 @@ Verified measure of loop 2: the first field message has 13 glyphs on its first r
 
 ## Open Items
 
-1. Reach windows of types 3 to 6 (and loops 3 to 5): choice boxes, shops, battle, and dialogue with portraits are the likely places.
+1. Reach windows of types 4 to 6 (and loops 3 to 5): shops, battle, and dialogue with portraits are the likely places. Type 3 is the `C2` choice box; which loop draws its options was not read.
 2. Decode which command selects each type.
 3. Analyze the other callers of the glyph routines.
 4. A hook for each loop that was not run (the comparison with `E5` is at `$D1:4975`, `$D1:4AAD` and `$D1:4C71`, each followed by a `CMP #$C3`), tested in a window that uses it.
