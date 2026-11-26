@@ -1,6 +1,6 @@
 # Text Engine And Script Format
 
-This file records how the game stores, decodes, and draws its dialogue. Notation follows [header.md](header.md). Each claim is marked **verified** (with how), **corpus** (supported by patterns in the data, not observed in the engine), or **guess** (with why). Tools that implement this format: `tools/script_format.py`, `tools/check_scripts.py`, `tools/script_builder.py`, `tools/build_relocation_probe.py`.
+This file records how the game stores, decodes, and draws its dialogue. Notation follows [header.md](header.md). Each claim is marked **verified** (with how), **measured** (observed in the engine by the forced-execution probe), **read from code** (read in the handler disassembly, not run), **corpus** (supported by patterns in the data, not observed in the engine), or **guess** or **unknown** (with why). Tools that implement this format: `tools/script_format.py`, `tools/check_scripts.py`, `tools/script_builder.py`, `tools/build_relocation_probe.py`.
 
 ## Verdict
 
@@ -33,43 +33,84 @@ Glyph slots in the narration window (loop 1, window type 1): 24, as two rows of 
 
 The dispatcher is a state machine: `$D1:0274` jumps through the table at `$D1:0286` on `$0AC4` (the state); state 3 jumps through the table at `$D1:0422` on `$0AC5` (the command minus `$C0`). Handler addresses are in that table (64 entries, `$C0`-`$FF`). The command byte is fetched at `$D1:3B13`; arguments are fetched or skipped by helpers at `$D1:3B37`, `3B61`, `3B7B`, `3B9D`.
 
-Argument counts were measured with a forced-execution probe: the byte `cmd, 01 02 03 04 05 06, C7 C7 C7 C7` was written to WRAM, the current level of the script pointer stack was pointed at it, the engine ran 8 frames, and the position where the engine fetched the next command was read with a read watch. The probe was run on the intro savestate state, with two argument patterns (`01..06` and `00..00`), and both patterns agreed for every command. The probe validated first against commands whose behavior was already known from a trace (`C8`=1, `C5`=0, `EE`=2).
+Argument counts have four evidence levels, recorded per entry in `tools/script_format.py` (`Evidence.MEASURED`, `CODE`, `CORPUS`, `UNKNOWN`):
+
+- **measured**: a forced-execution probe (`tools/probe_command_arity.py`). The bytes `cmd, 01 02 03 04 05 06, C7 C7 C7 C7` were written to WRAM, the current level of the script pointer stack was pointed at them, the engine ran 8 frames (30 or 300 for commands that wait), and the position where the engine fetched the next command was read with a read watch. When the engine does not return to the dispatcher (a call, a replace, a wait) the next fetch is not visible, and the pointer of the current stack level after the run was used instead: it points at the last argument consumed. The probe was run on the intro savestate with two or more argument patterns, and the patterns agreed for every entry marked measured. It was validated first against commands whose behavior was known from a trace (`C8`=1, `C5`=0, `EE`=2).
+- **read from code**: the handler was disassembled and the calls to the argument helpers were counted. The helpers behave as follows: `$D1:3B7B` advances one byte and reads 8 bits; `$D1:3B9D` advances one byte but reads 16 bits; `$D1:3B37` skips one byte and `$D1:3B61` two; `$D1:3B14` and `$D1:3AF6` only peek; `$D1:3AE1` ends the command (advance one more byte, state 0). The length of a command is the total advance from the command byte, counting that final byte. Reading the code does not prove that the engine takes that path with real data, so handlers with conditional paths were followed on every path.
+- **corpus**: only the data supports it: the blobs that use the command close exactly at the next blob only with this length.
+- **unknown**: nothing supports it; the tokenizer assumes 0 arguments and the extractor flags the entry.
 
 | Command | Arguments | Evidence | Notes |
 | --- | --- | --- | --- |
 | `C0` | 0 | measured | Starts a message window; text follows. |
 | `C1` | 0 | measured | Like `C0`, used after a page break. |
-| `C2` | 4 | corpus | Ends the blob. Always last: `... 8E C2 0A 00 60 00`. The engine blocks on it, so the probe could not measure it. |
+| `C2` | 4 | read from code | Yes/No choice: two 16-bit message ids, and the engine jumps to one of them (a replace: it does not return to this script). Always last: `... 8E C2 0A 00 60 00`, so the blob ends after its arguments. 80 uses. The probe blocks on it. |
 | `C3` | 0 | measured | Line break. |
 | `C4` | 0 | corpus | Appears after a text run and before `C1`: a page break or wait for a key. Blocks in the probe. |
 | `C5` | 0 | measured | Appears between timed waits in the intro. |
 | `C6` | 0 | measured | |
 | `C7` | 0 | corpus | Ends the blob; 1531 dialogue blobs end with it. |
 | `C8` | 1 | measured | Wait `nn` frames (`C8 80` in the intro). |
-| `C9`, `CD`-`D4`, `D6`, `D7`, `D8` | 1 | measured | `D8 nn` calls script `nn` of the table at `$EE:0000` (verified in the handler code). |
+| `C9`, `CD`-`D4`, `D6`, `D8` | 1 | measured | `D8 nn` calls script `nn` of the table at `$EE:0000` (verified in the handler code). |
 | `CA`, `CC` | 0 | measured | |
-| `CB`, `DA`, `DB` | 1 | **guess** | The engine blocked after reading the first argument; the real count may be higher. |
+| `CB`, `DA`, `DB` | 1 | read from code | One 8-bit read each, then the command ends (7 uses of `CB`, 2 of `DB`, none of `DA`). Not measured: the probe blocks after the first argument, which is consistent but proves nothing. |
 | `D5`, `DD`, `E3`, `E7`, `F4` | 2 | measured | |
-| `D9` | 2 | corpus | `D9 00 01 FF`; blocks in the probe. |
+| `D7` | 1 + sub-command | see below | A selector command like `FE`. |
+| `D9` | 2 | read from code | Map change: reads two arguments after a screen fade and abandons the script (291 uses, e.g. `D9 00 01 FF`). Previously corpus only. |
 | `DC` | 4 | measured | Corpus agrees: `DC 06 00 3D 02`. |
 | `DE`-`E2` | 3 | measured | |
 | `E4`, `E5`, `E9`, `EA`, `EB`, `EF`, `F6` | 1 | measured | |
-| `E6` | 2 | **guess** | Blocks; rare. |
-| `E8` | variable | **unknown** | Reads one argument, then more depending on its value (values `00`, `05` and `FF` appear in the data). Appears at the end of blobs: `E8 05 3D 00 3A 00`. |
-| `EC`, `ED` | 0 | **guess** | `ED` is nearly absent from the data. |
+| `E6` | 2 | read from code | The handler consumes two argument bytes; not measured (the engine blocks). One use in the data. |
+| `E8` | 5 | read from code | A random choice between two messages: a selector byte and two 16-bit message ids, then a replace (the engine continues in the chosen message and never returns), so the blob ends after the fifth argument: `E8 05 3D 00 3A 00`. Earlier notes called its length variable; it is not, the selector changes which id is taken and not how many bytes are read. 9 uses. |
+| `EC` | 2 | measured | Map change: two arguments, read after the fade; the script is abandoned. |
+| `ED` | 0 | measured | Nearly absent from the data. |
 | `EE` | 2 | measured | Calls message `nnnn` (16-bit id): resolves it through the area record (below) and pushes a new level on the pointer stack. |
 | `F0` | 0 | corpus | Ends the blob (a one-byte blob `F0` exists). |
-| `F1` | 0 | corpus | `F1 FF`. |
+| `F1` | 0 | read from code | `F1 FF`: the handler reads no argument and passes to another state (24 uses). |
 | `F2` | 5 | measured | |
-| `F3` | 2 | corpus | `F3 01 00 FF`. |
+| `F3` | 2 | read from code | Map change like `D9`: `F3 01 00 FF` (79 uses). |
 | `F5` | 0 | measured | |
 | `F7`, `F8`, `F9` | n/a | measured | The dispatcher loops on them without consuming bytes: they appear to be invalid and never used (**guess**). |
-| `FE` | variable | **read from the code**, lengths unknown | A sub-dispatcher: its handler at `$D1:0C11` reads one byte `v`, stores `v + 0x40` in `$0AC5` and jumps back into the command dispatcher, so each `FE v` is an extended command with its own handler and argument count. The probe gave two arguments for `FE 01`, but `FE 14 FF` is a complete 3-byte blob in the global table (1 argument), and `tools/probe_command_arity.py --command FE --first-args corpus` showed that the count also changes with the argument values (`FE 08` took 5 argument bytes with zeros and blocked with `01 02 03...`). 60 distinct `v` appear in the data. Not resolved. |
+| `FE` | 1 + sub-command | see below | A selector command. |
 | `FF` | 0 | corpus | Ends the blob (scripts and narration). |
 
-A blob ends at the first `C2` (after its 4 arguments), `C7`, `F0`, or `FF` that is read as a command.
+A blob ends at the first `C7`, `F0` or `FF` that is read as a command, or at a command after which the engine never reads this script again (a "leaving" command): `C2`, `D9`, `E8`, `EC`, `F3`, and the `FE` sub-commands marked as leaving below. Leaving commands are those whose handler replaces the script pointer with another message (`C2`, `E8`, `FE 40`, `FE 44`, `FE 45`), abandons the script for a map change, or hands the engine over to another routine. The data agrees: a blob can end right after the arguments of a leaving command, without a terminator. Some blobs also carry one or two redundant `C7` or `FF` bytes after their real end (for example `EC 0D 00 FF FF`) that the engine never reads; `tools/script_format.py` accepts up to two of them in the gap (`absorb_dead_tail`).
 
-The arity table lives in `tools/script_format.py` with each entry's evidence level; `tokenize` reports the commands it met whose count is not measured, and the check marks those blobs for review.
+### FE Sub-commands
+
+The handler of `FE` at `$D1:0C11` reads one byte `v`, stores `v + 0x40` in `$0AC5` and jumps back into the command dispatcher, so each `FE v` is an extended command with its own handler (entries `$40` to `$89` of the table at `$D1:0422`, `v` = `00` to `49`). The length of `FE v` is 2 plus the arguments in the table below (counted after `v`). It does not depend on the argument values: an earlier note said that `FE 08` changed length with the argument values, but that was the probe blocking in a wait state, not a real change. `FE 2D` is the only entry where the code and the data disagree (see its row).
+
+In the data there are 1256 `FE` commands with 45 distinct selectors: 1012 of those uses have a measured length, 243 a length read from code, and 1 a length known only from the corpus.
+
+| Arguments | Selectors (uses in the data, when not zero) | Evidence |
+| --- | --- | --- |
+| 0 | `0D` (5), `0E` (4), `0F` (1), `10`-`13`, `14` (3), `15` (1): copy a string to the text buffer and run it; `18`, `1A`, `1B`, `1C`, `1F`, `20`, `23`, `25`, `27`, `2F`, `30`, `35`, `36`, `38` (42), `3D`, `3E`, `41` (3), `47` | measured |
+| 0 | `26`, `31` (1), `39` (79), `3A` (48), `3B` (1), `49` (1) | read from code |
+| 0 | `21`, `46` (2): leaving | read from code |
+| 0 | `0A`: pops one level of the pointer stack; no blob uses it | read from code |
+| 0 | `34`: the handler enters a wait state (`$2A`) that may read more; no blob uses it | **unknown** |
+| 1 | `00` (131), `01` (37), `02`, `07` (57), `0B` (9), `16` (7), `17` (7), `48` (5) | measured |
+| 1 | `22` (1): leaving | measured |
+| 1 | `24` | read from code |
+| 1 | `32` (107): waits and then pops the script level, so it ends the blob (leaving) | read from code |
+| 2 | `29` (106), `2A` (20), `2B` (18), `33` (10), `42` (22) | measured |
+| 3 | `1D`, `1E` (a conditional jump whose two paths consume the same bytes), `28` (30), `2C` | measured |
+| 3 | `0C` (1): map change, leaving | measured |
+| 4 | `08` (75), `43` (4) | measured |
+| 5 | `09` (100) | measured |
+| 6 | `03` (89), `04` (59), `19` (73), `2E` (11), `3C`, `3F` (66) | measured |
+| 6 | `37` (1) | read from code |
+| 6 | `2D` (1) | **corpus**: with the group member present the engine consumed 7 bytes in the probe (3 without it), but the only blob that uses it closes exactly with 6 |
+| 7 | `05` (2), `06` (1) | measured |
+| 8 | `40`, `44`, `45` (1 each): jump to one of four 16-bit message ids (leaving) | read from code |
+
+Selectors from `4A` up have no handler in the table. Only `FE F4` appears in the data (12 times, always followed by two bytes, as in `FE F4 FE 02`); the probe showed that the engine runs it as `F4` with its two arguments, so it is recorded with 2 arguments, measured. Any other selector is **unknown** and flagged.
+
+### D7 Sub-commands
+
+`D7` reads a selector `s` (its handler at `$D1:06B0` dispatches through the 157-entry table at `$D1:4EF1`). Most selectors read no argument after `s`. Read from the handlers (not measured): `D7 19` has 5 (125 uses; the blobs close exactly with that), `D7 48` has 2, `D7 6A` has 6, and `D7 6B`, `D7 8C` and `D7 92` have 1. Seventeen selectors (`24`, `28`, `3E`, `3F`, `44`-`47`, `4E`-`54`, `5D`, `76`) go through a second table or several phases and their handlers were not followed completely: they are recorded with 0 arguments as **corpus** evidence (16 uses, and every blob that uses them closes exactly). The probe was also tried on `D7 00`-`18`, but every case ended in the same state without evidence of reaching the handler; the cause was not investigated, so nothing about `D7` is measured. 21 of the 157 selectors never appear in the data.
+
+The arity table lives in `tools/script_format.py` with each entry's evidence level. `tokenize` reports in `unresolved` the commands it met whose length is not measured (the key is the command, or the command followed by the selector for `FE` and `D7`, for example `0xFE40`), and the extractor flags an entry only when one of those has **unknown** evidence.
 
 ## Message Database
 
@@ -86,7 +127,7 @@ T2  tables of 16-bit pointers, ids >= 0x400      one table ($EF:C1FB) shared by 
 - The variables are: `$0A3E` pointer to the current area index byte (`$09C7`), `$0A42`-`$0A44` the directory pointer (`$EF:0000`), `$0AC1` the message id. In the new-game intro the area index is 8 and its record is at `$E2:EE58`, with `T0 = $E2:EE73` (16 entries), `T1 = $E2:F393` (32 entries), `T2 = $EF:C1FB` (192 entries).
 - A table entry is a 16-bit address in the bank of the table. A table ends where its first blob starts: the blobs follow the table immediately. This holds for all 25 tables, but it is a property of the original ROM: after moving a blob the length of the table must come from the original extraction, not be rediscovered.
 - Entries can repeat (`$F392` appears four times in `T0` of area 8): several ids share the same blob, here the one-byte blob `FF`.
-- Blobs are contiguous: the byte before the start of the next blob is the last byte (a terminator) of the previous one in the great majority of cases. 2598 of 2797 blobs close exactly. The remaining 199 are listed by `tools/check_scripts.py` (131 without a terminator before the next blob, mostly the variable-length `FE` and `E8`; 68 with unexplained gaps before the next blob). Nothing was assumed about them.
+- Blobs are contiguous: the byte before the start of the next blob is the last byte (a terminator) of the previous one in the great majority of cases. 2794 of 2797 blobs close exactly (it was 2598 before the argument counts of `FE`, `E8` and the others were resolved). The remaining 3 are listed in Coverage.
 - Besides the area tables, a second table of 112 pointers at `$EE:0000` holds scripts called by command `D8` (99 distinct blobs, 404 glyph bytes). It is included in the tools.
 - The nine words before `T0` of area 8 (`$E2:EE61`-`$E2:EE72`, values `F50F F5A2 F5CF ...`) were not explained.
 - Nested calls: the script pointer stack is in WRAM, depth at `$0A8D`, 3 bytes per level from `$0A8F`. In the intro, level 0 is the event script (`$E2:F3D3`, `F401`...), and the `EE` command pushes level 1 with the message blob.
@@ -95,16 +136,22 @@ Which code builds a message pointer from an immediate or a base plus index, othe
 
 ## Coverage
 
-Run `tools/check_scripts.py` against the verified dump:
+Run `tools/check_scripts.py` against the verified dump. A blob closes exactly when its tokens end in a terminator or a leaving command, followed by at most two redundant `C7` or `FF` bytes, exactly where the next blob of the same table starts (for the last blob of a table the only requirement is the terminator):
 
 | Table role | Blobs closing exactly | Needing review |
 | --- | --- | --- |
-| Messages (`T0`, ids `< 0x200`) | 1628 | 26 |
-| Event scripts (`T1`) | 869 | 40 |
-| Global (`T2`) | 17 | 118 |
-| Called scripts (`$EE:0000`) | 84 | 15 |
+| Messages (`T0`, ids `< 0x200`) | 1653 | 1 |
+| Event scripts (`T1`) | 908 | 1 |
+| Global (`T2`) | 135 | 0 |
+| Called scripts (`$EE:0000`) | 98 | 1 |
 
-Dialogue is concentrated in `T0`: 75018 bytes of glyph codes in the exact blobs. `T1` and `T2` hold almost no text (1461 and 290 glyph bytes), mostly commands. Most of the 118 global-table failures are blobs made only of `FE` commands.
+2794 of 2797 blobs close exactly (2598 before the sub-command lengths were resolved), and the identity build is byte-identical to the original ROM. The three that do not close:
+
+- `$EC:0478` (messages): ends in `E6 1B 00 13 00 14 00`, glyphs included, without a terminator before the next blob. `E6` has 2 arguments by the code, so either `E6` reads more in this case or the blob continues in the next one. **Unresolved.**
+- `$EE:0BF7` (called scripts): the 12-byte blob ends with `EE 22 00` and has no terminator, so it probably falls through into the next blob. **Unresolved.**
+- `$EE:525D` (events): terminates after 31 bytes, and 4948 more bytes follow before the next blob start; probably data that nothing points at. **Unresolved.**
+
+Dialogue is concentrated in `T0`: 76068 bytes of glyph codes in the exact blobs. The event, global and called scripts hold much less (431, 2795 and 0 glyph bytes). Most of what earlier counts took for text there was the arguments of `FE` and `E8`; what remains in those tables was not reviewed as text.
 
 Text that does **not** go through these scripts was not analyzed: the title menu (`最初からはじめる`), item and spell names, status screens, battle messages, and anything else drawn by another path. Whether they use the same font routine or their own is unknown.
 
@@ -128,16 +175,16 @@ Booted from reset in MesenCE and driven with the same inputs (Start at the title
 
 Status: **verified** by round trip, with the limits listed here. `tools/extract_script.py` turns every blob into an entry made of a skeleton (the commands, never edited) and text runs (what gets translated), see the header of the tool for the format.
 
-- 2797 distinct blobs; 2429 close exactly and have no doubtful command; 1874 hold text (5523 runs), 1524 of them without doubt.
-- By role, with the text entries that have no doubt: messages 1490 of 1551 (4532 of 4797 runs), event scripts 25 of 167, global table 8 of 126, called scripts 1 of 30. The event, global and called scripts are mostly commands; the "text" in them is arguments of `FE` and `E8` that the tokenizer reads as glyphs.
-- A run that comes right after an `FE` or `E8` is flagged for review, because those commands have a variable length and the run may be arguments. This is the main open question of the extraction (see Open Items 2).
+- 2797 distinct blobs; 2794 close exactly and have no doubtful command (2429 before the argument counts were resolved); 1691 hold text (4993 runs), 1689 of them without doubt. Before, 1874 entries held "text" (5523 runs) and 350 of them were flagged.
+- By role, with the text entries that have no doubt: messages 1548 of 1549 (4729 of 4731 runs), event scripts 18 of 19, global table 123 of 123, called scripts none. The text of the event and global tables was not reviewed.
+- The 3 entries flagged for review are the 3 blobs that do not close (see Coverage); two of them hold text. The extractor no longer flags a run that comes right after an `FE` or `E8` (it did while their lengths were unknown). It flags an entry only when it uses a command whose length is **unknown**: an `FE` selector of `34`, or from `4A` up other than `F4`, or a `D7` selector outside its table. None occurs in the ROM.
 - Round trip: every entry rebuilds its bytes from the skeleton and the `raw` of its runs, and the readable `jp` of every run parses back to `raw`, for the whole ROM.
 - The dumped files (`text/`) hold the original Japanese text and are not committed.
 
 ## Open Items
 
 1. Glyph table: done for the 920 glyphs in use, see [glyph-table.md](glyph-table.md); four readings and the second reader are open.
-2. Measure the real argument counts of `CB`, `DA`, `DB`, `E6`, `E8`, `EC`, `ED`, and the sub-command lengths of `E8` and `FE` (each `FE v` has its own handler, see the table above: read the handlers from the extended table or measure them with values that do not change the path), then re-run the check. The remaining 199 blobs need this, and so do the 350 flagged text entries of the extraction.
+2. Argument counts: resolved for every command that appears in the ROM, with the evidence level of each entry in the Commands section. Still open: measure what is only read from code (in particular `C2`, `D9`, `E8`, `EC`, `F3`, the `FE` leaving selectors, and all of `D7`); decide `FE 2D` (code says 7 arguments with the group member present, the data says 6); follow the multi-phase `D7` handlers (17 selectors); determine `FE 34`; and explain the three blobs that do not close (`$EC:0478`, `$EE:0BF7`, `$EE:525D`).
 3. Find every reader of the pointer tables (code that builds addresses from immediates), and confirm that no code reads a blob by absolute address, before moving blobs for real.
 4. Verify free space with trap bytes across a long route; until then use only the ranges needed.
 5. Analyze the paths that draw other text (menus, items, battle, names).
