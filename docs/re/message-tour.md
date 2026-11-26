@@ -120,6 +120,14 @@ Marker text read back from the WRAM tile buffers: 1292 runs checked, 1290 correc
 
 59 of 4729 runs, in entries that did not finish (they wait longer than 1500 frames or for something that the forced state never gives), or in a branch that the forced run did not take: 9 of the intro table (`$E2:EF50`, `$E2:F1FE`), 25 of `$E7:003F`, 15 of `$E7:362B`, 10 of `$EE:24E2`. The largest are `$E7:41F2` (15 runs), `$E7:1119` (11), `$E7:100C` (10), `$EE:3258` (6, among them the only run with no `C0`/`C1` before it and three rows, `[0, 13, 13]`) and `$EE:2E04` (4). Their window type is **predicted** from their opening command (58 of them) and unknown for the run with no opener.
 
+### Event and global scripts (measured, 2026-11-26)
+
+`build_marker_rom.py --roles events,global` marks the scripts that hold text outside the message tables: 141 entries with 261 runs (123 global entries with 234 runs and 19 event entries with 28 runs; the called scripts hold no text). Of the 261 runs, 221 get a marker and 40 are shorter than 3 bytes and stay as they were. The marker ROM builds and runs, and three parallel `force_messages.py` shards forced all 141 entries in about 20 seconds.
+
+- Window type: every entry that opened a window opened type 2 (99 entries), type 1 and 2 (37 entries; they hold both a `C0` and a `C1`), or type 2 and then 3 (1 entry, `$E7:551B`, which has a `C2`). Four entries opened none.
+- Runs drawn: 74 of 261, all in type 2. 135 of 141 entries finished; 6 timed out at 300 frames (`$ED:2C6B`, `$ED:7AD4`, `$ED:8425`, `$EF:31B9`, `$EF:B02E`, `$EF:C45D`).
+- Not drawn: 86 entries (82 of them in the global table `$EF:C1FB`) opened their window but the log never reached a marker. The cause is not known: either their text is drawn by a path that does not leave the script pointer at the run, or their branches depend on a game state that the field start does not give. For these runs the window type is known per entry (the opening command) and the slot limits are the same, so the budgets hold, but no run has its own measured counter.
+
 ### Slot limits (measured with rulers, by walking and by forcing)
 
 A ruler writes 40 slots into a run. The counter after the draw is the number of slots the window accepted.
@@ -181,6 +189,8 @@ python tools/force_messages.py plan --map <out>/marker-all.sfc.map.json --table 
 ../../.venv/Scripts/python.exe tools/force_messages.py run --rom <out>/marker-all.sfc --map <out>/marker-all.sfc.map.json --savestates <workspace>/savestates --mesen-bin <Mesen.exe> --table E7362B --check-buffers --out <out>/field.log.json
 ../../.venv/Scripts/python.exe tools/force_messages.py run --rom <out>/marker-all.sfc --map <out>/marker-all.sfc.map.json --savestates <workspace>/savestates --mesen-bin <Mesen.exe> --max-frames 300 --check-buffers --save-every 50 --out <out>/all.log.json
 ../../.venv/Scripts/python.exe tools/force_messages.py run --rom <original.sfc> --map <out>/original-all.map.json --savestates <workspace>/savestates --mesen-bin <Mesen.exe> --table E7362B --max-frames 1500 --out <out>/original-field.log.json
+python tools/build_marker_rom.py --rom <original.sfc> --asar <asar.exe> --table tbl/original.json --out <out>/marker-other.sfc --all --roles events,global
+for s in 0 1 2; do python tools/force_messages.py run --rom <out>/marker-other.sfc --map <out>/marker-other.sfc.map.json --savestates <workspace>/savestates --mesen-bin <Mesen.exe> --shard $s/3 --max-frames 300 --check-buffers --out <out>/other$s.json & done
 python tools/force_messages.py summary --map <out>/marker-all.sfc.map.json --log <out>/all.log.json
 python tools/tour_messages.py report --map <out>/original-all.map.json --log <out>/original-field.log.json
 python tools/tour_messages.py budgets --map <out>/marker-all.sfc.map.json --log <out>/all.log.json --out <out>/budgets.json
@@ -192,7 +202,7 @@ Without `--table` the whole map is forced (1548 entries); the full pass at `--ma
 
 1. Draw the 59 runs that were not drawn (waits longer than 1500 frames, scripts that wait for a state that the field start does not give). They are 1.2% of the runs and carry a predicted type.
 2. Window types 4 to 6 and their loops 3 to 5 ([window-types.md](window-types.md)), and the loop that draws the options of the `C2` box (type 3): no text run was seen in them. They are the candidates for shops, battle and portrait dialogue and will need the other text paths.
-3. Add the event scripts (`T1`), the global table (`T2`) and the called scripts to the marker map so that the same forced pass covers their text (the global table has 123 entries with text).
+3. Understand why 86 event and global entries opened a window without the log reaching a marker (see Event and global scripts), and give them a run-level measurement.
 4. A forced pass from other savestates (one per area, or the intro) for the blobs that call other messages, to see them with the tables of their own area.
 5. `E9`, `F6` and `CD`: `E9 nn` copies a string into `$0A4D` and probably draws a slot (1 slot of difference in `$E7:0F8C` run 6), `F6 nn` appears between runs of one page (the counters agree with it drawing nothing); neither was read. Not needed for the budgets.
 6. Forced drawing ran all 1548 rewritten blobs of the `--all` marker ROM through the engine in place (4670 runs drawn, none broken); scripts that depend on offsets inside a blob (none is known) are not covered by it.
