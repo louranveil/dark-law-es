@@ -137,7 +137,7 @@ Accepted by the user on 2026-11-25 ("adelante con tus recomendaciones"). A chang
 | 5 | Pagination | The translator splits pages; the tool wraps lines and fails on overflow. |
 | 6 | Text file format | JSON as above, one file per table. |
 | 7 | Order of work | Glyph table first (it unblocks reading), then extract and identity, then the marker tour, then translation of one area as a vertical slice before the rest. |
-| 8 | Provisional budgets (accepted 2026-11-25) | The opener of a page fixes its window type (`C0` gives type 1, `C1` gives type 2) and the measured limits are the budgets: 24 slots (48 letters) per page in type 1 and 32 slots (64 letters) in type 2, with the second row starting at slot 12 and 16. Each budget keeps its evidence level (measured, code, predicted, see [../re/message-tour.md](../re/message-tour.md)); a predicted one is replaced by a measurement when the tour reaches the run. |
+| 8 | Provisional budgets (accepted 2026-11-25) | The opener of a page fixes its window type (`C0` gives type 1, `C1` gives type 2) and the measured limits are the budgets: 24 slots (48 letters) per page in type 1 and 32 slots (64 letters) in type 2, with the second row starting at slot 12 and 16. Each budget keeps its evidence level (measured, code, predicted, see [../re/message-tour.md](../re/message-tour.md)); a predicted one is replaced by a measurement when the tour reaches the run. On 2026-11-26 the user accepted the 58 budgets that are still predicted as they are (4670 of 4729 runs were measured with no exception to the opener rule); they are checked in the final emulator test of the translation, and the 59 runs that forced drawing did not reach are not chased first. |
 
 ## Validation
 
