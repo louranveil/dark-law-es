@@ -1,6 +1,6 @@
 # Font
 
-Status: **verified** for the storage and the lookup code (read from the ROM and run in MesenCE); the character each glyph shows is **not mapped yet**.
+Status: **verified** for the storage and the lookup code (read from the ROM and run in MesenCE); the characters are recorded in [glyph-table.md](glyph-table.md).
 
 The dialogue font is stored uncompressed as 2 bpp tiles in banks `$D2` and `$D3`. Every glyph is 16x16 pixels, made of 4 tiles of 16 bytes: the two tiles of the top half are 32 contiguous bytes, and the two tiles of the bottom half are the next 32 bytes at `+0x100`. This is the same layout as a 16-tile-wide VRAM sheet, so `snes-tilesheet --bpp 2 --columns 16` renders a page as a readable sheet.
 
@@ -29,5 +29,5 @@ For each glyph the engine copies the 32 bytes of the top half and the 32 bytes o
 
 ## Open Items
 
-- Map each glyph index to a character. A suggested method is template matching against a rendered Japanese font, then human review; no table exists yet.
+- The glyph-to-character table exists ([glyph-table.md](glyph-table.md)); `tools/glyph_font.py` draws the sheets.
 - The menu at the title screen (`最初からはじめる`) is drawn by another path; not analyzed.
