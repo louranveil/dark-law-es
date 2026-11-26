@@ -17,6 +17,10 @@ Variables y rutinas (ver docs/re/text-engine.md): pila de punteros de script en 
 ``$0A8D`` (profundidad) y ``$0A8F`` (3 bytes por nivel), puntero activo en ``$1D``-``$1F``,
 estado del autómata de comandos en ``$0AC4``-``$0AC5``.
 
+Con ``--command FE --first-args corpus`` (o una lista ``00,01,..``) mide un comando de longitud variable
+con cada valor de su primer argumento (el subcomando): ``FE`` y ``E8`` leen más o menos argumentos según
+ese valor. ``corpus`` toma los valores que aparecen en los guiones de la ROM.
+
 Códigos de salida: 0 medición terminada, 2 uso o configuración incorrectos.
 """
 
@@ -51,6 +55,42 @@ def interpret_reads(reads: list[tuple[int, str]]) -> int | None:
     return later[0] - 1 if later else None
 
 
+def subcommand_patterns(first: int) -> dict[str, tuple[int, ...]]:
+    """Los dos patrones de argumentos con el subcomando ``first`` delante (el resto sube o es cero)."""
+    return {"ascending": (first, 2, 3, 4, 5, 6), "zeros": (first, 0, 0, 0, 0, 0)}
+
+
+def corpus_first_args(rom: bytes, command: int) -> list[int]:
+    """Valores del primer argumento de ``command`` en todos los bloques de las tablas, ordenados."""
+    import script_format as sf  # importación tardía: solo la usa este modo
+
+    values: set[int] = set()
+    for table in sf.read_all_tables(rom).values():
+        for index in range(len(table.entries)):
+            data = sf.read_bytes(rom, table.blob_address(index), 512)
+            position = 0
+            while position < len(data):
+                code = data[position]
+                if code < sf.FIRST_COMMAND:
+                    position += 1
+                elif code in sf.WIDE_PREFIXES:
+                    position += 2
+                else:
+                    if code == command and position + 1 < len(data):
+                        values.add(data[position + 1])
+                    arguments, _ = sf.command_arguments(code)
+                    position += 1 + arguments
+                    if code in sf.TERMINATORS:
+                        break
+    return sorted(values)
+
+
+def parse_first_args(text: str, rom: bytes, command: int) -> list[int]:
+    if text == "corpus":
+        return corpus_first_args(rom, command)
+    return [int(part, 16) for part in text.split(",") if part]
+
+
 def probe_command(call, state: str, command: int, arguments: tuple[int, ...]) -> list[tuple[int, str]]:
     call("state.load", path=state)
     script = bytes([command, *arguments, 0xC7, 0xC7, 0xC7, 0xC7])
@@ -72,13 +112,35 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rom", default=os.environ.get("DARK_LAW_ROM"), help="ROM original (o DARK_LAW_ROM)")
     parser.add_argument("--mesen-bin", default=os.environ.get("MESEN_BIN"), help="Mesen (o MESEN_BIN)")
     parser.add_argument("--state", required=True, help="savestate del intro con el motor parado entre comandos")
+    parser.add_argument("--command", help="un solo comando en hexadecimal (con --first-args mide sus subcomandos)")
+    parser.add_argument("--first-args", help="valores del primer argumento en hexadecimal, separados por comas, o 'corpus'")
     arguments = parser.parse_args(argv)
     if not arguments.rom or not arguments.mesen_bin:
         print("error: pass --rom and --mesen-bin, or set DARK_LAW_ROM and MESEN_BIN", file=sys.stderr)
         return 2
+    if arguments.first_args:
+        if not arguments.command:
+            print("error: --first-args needs --command", file=sys.stderr)
+            return 2
+        command = int(arguments.command, 16)
+        try:
+            firsts = parse_first_args(arguments.first_args, Path(arguments.rom).read_bytes(), command)
+        except (ValueError, OSError) as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 2
+        print(f"{command:02X} first  ascending  zeros   (n = arguments counting the first, '-' = the engine blocked)")
+        for first in firsts:
+            results = []
+            for pattern in subcommand_patterns(first).values():
+                with emulator_session(Path(arguments.rom), arguments.mesen_bin) as (call, _):
+                    results.append(interpret_reads(probe_command(call, arguments.state, command, pattern)))
+            shown = ["-" if r is None else str(r) for r in results]
+            note = "" if results[0] == results[1] else "  <-- the patterns disagree"
+            print(f"{command:02X}   {first:02X}  {shown[0]:>8}  {shown[1]:>5}{note}", flush=True)
+        return 0
     print("cmd  ascending  zeros   (n = arguments, '-' = the engine blocked)")
     for command in range(0xC0, 0x100):
-        if command in SKIPPED:
+        if command in SKIPPED or (arguments.command and command != int(arguments.command, 16)):
             continue
         results = []
         for pattern in PATTERNS.values():

@@ -32,5 +32,30 @@ class InterpretReadsTests(unittest.TestCase):
         self.assertIsNone(probe.interpret_reads([(0, FETCH)]))
 
 
+class SubcommandTests(unittest.TestCase):
+    def test_patterns_start_with_the_subcommand(self):
+        patterns = probe.subcommand_patterns(0x3B)
+        self.assertEqual(patterns["ascending"][0], 0x3B)
+        self.assertEqual(patterns["zeros"], (0x3B, 0, 0, 0, 0, 0))
+
+    def test_first_args_can_be_a_list(self):
+        self.assertEqual(probe.parse_first_args("00,0A,FF", b"", 0xFE), [0, 10, 255])
+        self.assertEqual(probe.parse_first_args("", b"", 0xFE), [])
+
+    def test_bad_first_args_are_an_error(self):
+        with self.assertRaises(ValueError):
+            probe.parse_first_args("zz", b"", 0xFE)
+
+    def test_main_requires_a_command_with_first_args(self):
+        import io
+        from contextlib import redirect_stderr
+
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code = probe.main(["--rom", "x", "--mesen-bin", "y", "--state", "z", "--first-args", "00"])
+        self.assertEqual(code, 2)
+        self.assertIn("--command", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
