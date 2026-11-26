@@ -77,14 +77,135 @@ class TokenizeTests(unittest.TestCase):
         self.assertFalse(sf.tokenize(bytes([0x0A, 0x0B])).complete)
 
     def test_unmeasured_commands_are_reported(self):
-        parsed = sf.tokenize(bytes([0xE6, 0xFF]))
-        self.assertIn(0xE6, parsed.unresolved)
+        parsed = sf.tokenize(bytes([0xE6, 0x01, 0x02, 0xFF]))
+        self.assertIn(0xE6, parsed.unresolved)  # leído en el código, no medido
         self.assertNotIn(0xC8, sf.tokenize(bytes([0xC8, 0x01, 0xFF])).unresolved)
 
     def test_measured_argument_counts_from_the_probe(self):
-        expected = {0xC0: 0, 0xC8: 1, 0xD5: 2, 0xDC: 4, 0xDE: 3, 0xEE: 2, 0xF2: 5, 0xFE: 2}
+        expected = {0xC0: 0, 0xC8: 1, 0xD5: 2, 0xDC: 4, 0xDE: 3, 0xEC: 2, 0xED: 0, 0xEE: 2, 0xF2: 5, 0xFE: 1, 0xD7: 1}
         for code, arguments in expected.items():
             self.assertEqual(sf.command_arguments(code)[0], arguments, hex(code))
+
+    def test_arguments_read_from_the_handler_code(self):
+        expected = {0xCB: 1, 0xDA: 1, 0xDB: 1, 0xE6: 2, 0xE8: 5, 0xC2: 4, 0xD9: 2, 0xF3: 2}
+        for code, arguments in expected.items():
+            self.assertEqual(sf.command_arguments(code), (arguments, sf.Evidence.CODE), hex(code))
+
+    def test_an_unknown_command_is_assumed_to_have_no_arguments(self):
+        self.assertEqual(sf.command_arguments(0xF7), (0, sf.Evidence.UNKNOWN))
+
+
+class SelectorCommandTests(unittest.TestCase):
+    def test_fe_length_depends_on_the_selector(self):
+        for selector, arguments in {0x00: 1, 0x03: 6, 0x05: 7, 0x08: 4, 0x18: 0, 0x29: 2, 0x2E: 6, 0x3F: 6, 0x42: 2, 0x43: 4}.items():
+            data = bytes([0xFE, selector] + [0x01] * arguments + [0xFF])
+            parsed = sf.tokenize(data)
+            self.assertEqual([len(t.raw) for t in parsed.tokens], [2 + arguments, 1], hex(selector))
+            self.assertTrue(parsed.complete)
+
+    def test_the_selector_is_part_of_the_command_and_never_text(self):
+        # FE 03 lleva seis argumentos: 0A 19 son argumentos, no glifos
+        parsed = sf.tokenize(bytes([0xFE, 0x03, 0x0A, 0x19, 0x01, 0x02, 0x03, 0x04, 0xFF]))
+        self.assertEqual([t.kind for t in parsed.tokens], ["command", "command"])
+        self.assertEqual(parsed.tokens[0].key, 0xFE03)
+        self.assertEqual(parsed.tokens[0].code, 0xFE)
+
+    def test_fe_with_a_truncated_selector_is_incomplete(self):
+        self.assertFalse(sf.tokenize(bytes([0x0A, 0xFE])).complete)
+        self.assertFalse(sf.tokenize(bytes([0xFE, 0x03, 0x01])).complete)
+
+    def test_selectors_outside_the_handler_table_are_unknown_except_f4(self):
+        self.assertEqual(sf.command_arguments(0xFE7F), (0, sf.Evidence.UNKNOWN))
+        self.assertEqual(sf.command_arguments(0xFEF4), (2, sf.Evidence.MEASURED))
+        self.assertIn(0xFE7F, sf.tokenize(bytes([0xFE, 0x7F, 0xFF])).unresolved)
+
+    def test_fe_arguments_resolved_only_from_code_are_reported_as_unmeasured(self):
+        self.assertEqual(sf.command_arguments(0xFE40), (8, sf.Evidence.CODE))
+        parsed = sf.tokenize(bytes([0xFE, 0x42, 0x01, 0x02, 0xFF]))
+        self.assertNotIn(0xFE42, parsed.unresolved)  # medido
+        self.assertIn(0xFE39, sf.tokenize(bytes([0xFE, 0x39, 0xFF])).unresolved)  # solo leído en el código
+
+    def test_fe_2d_keeps_the_corpus_length_and_documents_the_conflict(self):
+        arguments, evidence = sf.command_arguments(0xFE2D)
+        self.assertEqual((arguments, evidence), (6, sf.Evidence.CORPUS))
+        self.assertIn("7", sf.FE_SUBCOMMANDS[0x2D].note)
+
+    def test_d7_is_a_selector_command_with_a_handler_table(self):
+        self.assertEqual(len(sf.D7_SUBCOMMANDS), 0x9D)
+        self.assertEqual(sf.command_arguments(0xD700), (0, sf.Evidence.CODE))
+        self.assertEqual(sf.command_arguments(0xD719)[0], 5)
+        parsed = sf.tokenize(bytes([0xD7, 0x19, 1, 2, 3, 4, 5, 0xFF]))
+        self.assertEqual([len(t.raw) for t in parsed.tokens], [7, 1])
+        self.assertEqual(parsed.tokens[0].key, 0xD719)
+
+    def test_d7_selector_without_an_entry_is_unknown(self):
+        self.assertEqual(sf.command_arguments(0xD7AA), (0, sf.Evidence.UNKNOWN))
+
+    def test_the_arguments_of_a_selector_command_are_not_text_even_when_they_look_like_terminators(self):
+        parsed = sf.tokenize(bytes([0xFE, 0x00, 0xFF, 0xC7]))
+        self.assertEqual([len(t.raw) for t in parsed.tokens], [3, 1])
+
+
+class LeavingCommandTests(unittest.TestCase):
+    def test_leaving_commands_close_the_blob_after_their_arguments(self):
+        cases = {
+            "C2": bytes([0xC2, 1, 2, 3, 4]),
+            "E8": bytes([0xE8, 5, 1, 0, 2, 0]),
+            "EC": bytes([0xEC, 1, 2]),
+            "D9": bytes([0xD9, 1, 2]),
+            "F3": bytes([0xF3, 1, 2]),
+            "FE 0C": bytes([0xFE, 0x0C, 1, 2, 3]),
+            "FE 32": bytes([0xFE, 0x32, 8]),
+            "FE 40": bytes([0xFE, 0x40] + [1] * 8),
+        }
+        for name, data in cases.items():
+            parsed = sf.tokenize(data + bytes([0x0A, 0x0B]))
+            self.assertTrue(parsed.complete, name)
+            self.assertEqual(parsed.length, len(data), name)
+
+    def test_a_non_leaving_selector_does_not_close_the_blob(self):
+        self.assertFalse(sf.tokenize(bytes([0xFE, 0x00, 0x01])).complete)
+
+    def test_a_leaving_command_with_cut_arguments_is_incomplete(self):
+        self.assertFalse(sf.tokenize(bytes([0xE8, 5, 1])).complete)
+
+    def test_command_info_describes_size_key_and_end(self):
+        data = bytes([0xFE, 0x32, 0x08])
+        info = sf.command_info(data, 0)
+        self.assertEqual((info.size, info.key, info.ends), (3, 0xFE32, True))
+        self.assertIs(info.evidence, sf.Evidence.CODE)
+        self.assertEqual(sf.command_info(bytes([0xFE]), 0).size, None)
+        self.assertFalse(sf.command_info(bytes([0xC8, 1]), 0).ends)
+
+
+class DeadTailTests(unittest.TestCase):
+    def test_up_to_two_redundant_terminators_after_the_end_are_absorbed(self):
+        parsed = sf.tokenize(bytes([0xEC, 0x0D, 0x00, 0xFF, 0xFF]))
+        self.assertEqual(parsed.length, 3)
+        absorbed = sf.absorb_dead_tail(parsed, bytes([0xFF, 0xFF]))
+        self.assertEqual(absorbed.length, 5)
+        self.assertEqual(sf.absorb_dead_tail(parsed, bytes([0xC7])).length, 4)
+
+    def test_other_bytes_or_longer_tails_are_not_absorbed(self):
+        parsed = sf.tokenize(bytes([0xEC, 0x0D, 0x00]))
+        for tail in (b"", bytes([0xFF, 0xFF, 0xFF]), bytes([0x0A]), bytes([0xF0])):
+            self.assertEqual(sf.absorb_dead_tail(parsed, tail).length, 3, tail)
+
+    def test_an_incomplete_blob_absorbs_nothing(self):
+        parsed = sf.tokenize(bytes([0x0A, 0x0B]))
+        self.assertEqual(sf.absorb_dead_tail(parsed, bytes([0xFF])).length, 2)
+
+    def test_check_table_accepts_the_dead_tail_as_part_of_the_gap(self):
+        rom = bytearray(synthetic_rom())
+        offset = sf.cpu_to_offset(0xE20004)
+        # blob A: C8 80 C7 al final y un FF sobrante; el blob B queda un byte más allá
+        blob_a = bytes([0xC0, 0x00, 0x0A, 0xFD, 0x04, 0xC3, 0x19, 0xC8, 0x80, 0xC7, 0xFF])
+        blob_b = bytes([0xC1, 0x05, 0xC2, 0x0A, 0x00, 0x60, 0x00])
+        rom[offset : offset + len(blob_a) + len(blob_b)] = blob_a + blob_b
+        rom[sf.cpu_to_offset(0xE20000) : sf.cpu_to_offset(0xE20000) + 4] = struct.pack("<2H", 0x0004, 0x0004 + len(blob_a))
+        reports = sf.check_table(bytes(rom), sf.read_table(bytes(rom), 0xE20000))
+        self.assertEqual([p for p in reports[0].problems if "unmeasured" not in p], [])
+        self.assertEqual(reports[0].parsed.length, len(blob_a))
 
 
 class AddressTests(unittest.TestCase):

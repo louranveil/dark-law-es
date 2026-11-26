@@ -112,14 +112,23 @@ class BuildTest(unittest.TestCase):
         entries, _ = ex.build_entries(self.rom, self.table)
         self.assertEqual(ex.verify_round_trip(self.rom, entries, self.table), [])
 
-    def test_a_run_after_fe_is_flagged_for_review(self):
+    def test_a_run_after_fe_with_a_known_length_is_not_flagged(self):
         rom = bytearray(self.rom)
         offset = sf.cpu_to_offset(0xE20004)
-        rom[offset : offset + 6] = bytes([0xFE, 0x03, 0x0A, 0x19, 0xC7, 0xC7])
+        rom[offset : offset + 10] = bytes([0xFE, 0x42, 0x01, 0x02, 0x0A, 0x19, 0x0A, 0x19, 0x0A, 0xC7])  # FE 42 lleva dos argumentos
+        entries, _ = ex.build_entries(bytes(rom), self.table)
+        entry = next(entry for entry in entries if entry.id == "E2:0004")
+        self.assertEqual(entry.status, "ok")
+        self.assertEqual(entry.runs[0]["raw"], "0A 19 0A 19 0A")
+
+    def test_a_run_after_an_unknown_fe_selector_is_flagged_for_review(self):
+        rom = bytearray(self.rom)
+        offset = sf.cpu_to_offset(0xE20004)
+        rom[offset : offset + 10] = bytes([0xFE, 0x34, 0x0A, 0x19, 0x0A, 0x19, 0x0A, 0x19, 0x0A, 0xC7])  # FE 34: longitud sin determinar
         entries, _ = ex.build_entries(bytes(rom), self.table)
         entry = next(entry for entry in entries if entry.id == "E2:0004")
         self.assertEqual(entry.status, "review")
-        self.assertIn(ex.VARIABLE_COMMAND_PROBLEM, entry.problems)
+        self.assertEqual(entry.problems, ["uses commands with unknown argument counts: FE 34"])
 
 
 class DumpTest(unittest.TestCase):

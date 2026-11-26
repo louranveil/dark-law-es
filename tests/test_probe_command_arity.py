@@ -6,8 +6,11 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "tools"))
+sys.path.insert(0, str(REPO / "tests"))
 
 import probe_command_arity as probe  # noqa: E402
+import script_format as sf  # noqa: E402
+from test_script_format import synthetic_rom  # noqa: E402
 
 FETCH = probe.COMMAND_FETCH_PC
 
@@ -41,6 +44,13 @@ class SubcommandTests(unittest.TestCase):
     def test_first_args_can_be_a_list(self):
         self.assertEqual(probe.parse_first_args("00,0A,FF", b"", 0xFE), [0, 10, 255])
         self.assertEqual(probe.parse_first_args("", b"", 0xFE), [])
+
+    def test_corpus_first_args_follow_the_selector_lengths(self):
+        rom = synthetic_rom()
+        offset = sf.cpu_to_offset(0xE20004)
+        # FE 03 lleva seis argumentos y el sexto (0xFE) no abre otro comando: el 0x29 que le sigue es un glifo
+        rom[offset : offset + 10] = bytes([0xFE, 0x03, 1, 2, 3, 4, 5, 0xFE, 0x29, 0xFF])
+        self.assertEqual(probe.corpus_first_args(bytes(rom), 0xFE), [0x03])
 
     def test_bad_first_args_are_an_error(self):
         with self.assertRaises(ValueError):

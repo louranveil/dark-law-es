@@ -78,9 +78,11 @@ def corpus_first_args(rom: bytes, command: int) -> list[int]:
                 else:
                     if code == command and position + 1 < len(data):
                         values.add(data[position + 1])
-                    arguments, _ = sf.command_arguments(code)
-                    position += 1 + arguments
-                    if code in sf.TERMINATORS:
+                    info = sf.command_info(data, position)
+                    if info.size is None:
+                        break
+                    position += info.size
+                    if info.ends:
                         break
     return sorted(values)
 

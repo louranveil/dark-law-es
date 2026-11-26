@@ -50,7 +50,6 @@ from check_scripts import table_roles
 
 LINE_BREAK = 0xC3
 INDENT = 0xE5
-VARIABLE_COMMAND_PROBLEM = "text run right after an FE or E8 command: their argument counts depend on the sub-command, so the run may hold arguments"
 TOKEN_RE = re.compile(r"<([0-9A-F]{2}(?: [0-9A-F]{2})*)>|\{(\d+)\}")
 
 
@@ -188,10 +187,8 @@ def build_entries(rom: bytes, table: gt.GlyphTable) -> tuple[list[Entry], Counte
                 continue
             real = [p for p in report.problems if "unmeasured" not in p]
             guessed = sorted(code for code in report.parsed.unresolved if sf.command_arguments(code)[1] is sf.Evidence.UNKNOWN)
-            problems = real + ([f"uses commands with unknown argument counts: {' '.join(f'{c:02X}' for c in guessed)}"] if guessed else [])
+            problems = real + ([f"uses commands with unknown argument counts: {', '.join(f'{c >> 8:02X} {c & 0xFF:02X}' if c > 0xFF else f'{c:02X}' for c in guessed)}"] if guessed else [])
             skeleton, runs = split_entry(report.parsed.tokens, table)
-            if re.search(r"<(?:FE|E8)[^>]*>\{", skeleton):
-                problems.append(VARIABLE_COMMAND_PROBLEM)
             entry = Entry(
                 address=report.address,
                 role=roles[table_address],
