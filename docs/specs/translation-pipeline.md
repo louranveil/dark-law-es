@@ -22,7 +22,8 @@ Out of scope for the first version, each of which needs its own analysis: text t
 | Project font and its outline | Done | `assets/font/latin-8x16.txt`, `tools/build_custom_font.py` |
 | Probe that replaces one message with Spanish text | Done (a spike, one message) | `tools/build_latin_probe.py` |
 | Glyph table (which character each Japanese glyph is) | Done for the 920 glyphs in use, 4 readings open | `tbl/original.json`, `tools/glyph_table.py`, `tools/glyph_font.py`, [../re/glyph-table.md](../re/glyph-table.md) |
-| Text files, extractor, Spanish encoder, builder for the whole script, release | **Missing** | this document (stage 2 onward) |
+| Extractor: text files with skeleton and runs, coverage and round trip | Done, with 350 text entries flagged for review (runs after `FE`/`E8`) | `tools/extract_script.py` |
+| Spanish encoder, placement, builder for the whole script, release | **Missing** | this document (stages 5 to 8) |
 
 ## Blocking Unknowns
 
@@ -37,7 +38,7 @@ Out of scope for the first version, each of which needs its own analysis: text t
 Each stage has a deliverable and a "done when". A stage does not start before the previous one passes.
 
 1. **Glyph table** (done 2026-11-25, see [../re/glyph-table.md](../re/glyph-table.md)). A tool renders the font pages as sheets of numbered glyphs; each glyph gets a character, a confidence (`seen`, `matched`, `uncertain`) and the source of the judgement (visual reading, template match, English patch). The user reviews the uncertain ones. Output: `tbl/original.json`. Done when every glyph that the extracted text uses has a character or is marked `unknown`, with the count of each.
-2. **Extract.** Every message of every table becomes a JSON entry (see [Text File Format](#text-file-format)). The dump never overwrites a translation. Done when the coverage test reproduces `check_scripts.py` (1628 exact blobs and the 26 flagged ones listed, none dropped) and `encode(decode(blob))` is the original for every entry.
+2. **Extract** (first version done 2026-11-25, see [../re/text-engine.md](../re/text-engine.md#extraction)). Every message of every table becomes a JSON entry (see [Text File Format](#text-file-format)). The dump never overwrites a translation. Done when the coverage test reproduces `check_scripts.py` (1628 exact blobs and the 26 flagged ones listed, none dropped) and `encode(decode(blob))` is the original for every entry.
 3. **Marker build and tour.** Every message is replaced by its id; the game runs a scripted tour that logs, from RAM and not from the screen, the window type (`$0A4C`), the message id (`$0AC1`) and the slot counters each time a message draws. Output: the measured window type and page layout of each message that the tour reached, and the list of the ones it did not. Done when the budgets of the types 1 and 2 are measured and every unreached message is listed with its table and index.
 4. **Translation.** Against `glossary.md` and the budgets, one `es` field per text run. The glossary and the translation are deliverables of the project, written in Spanish.
 5. **Encode.** The tool turns each `es` run into Latin tokens (rules below) and checks the budget. Done when every entry encodes or fails with its id and the reason.
@@ -47,27 +48,32 @@ Each stage has a deliverable and a "done when". A stage does not start before th
 
 ## Text File Format
 
-JSON, one file per table (`text/<bank>-<table address>.json`), `indent=1`, `ensure_ascii=False`, `\n` newlines. Every entry:
+JSON, one file per message table (`text/<bank>-<table address>-<role>.json`), `indent=1`, `ensure_ascii=False`, `
+` newlines, written by `tools/extract_script.py`. Only the entries that have text are written. The files hold the original Japanese text, so `/text/` is ignored by git until the project decides how translation files are published. Every entry:
 
 ```json
 {
- "id": "E2:EE73/0000",
- "table": "E2:EE73",
- "index": 0,
- "role": "message",
- "skeleton": "<C0>{0}<C8 80>{1}<C7>",
+ "id": "E2:EE93",
+ "role": "messages",
+ "slots": ["E2EE73#0"],
+ "size": 79,
+ "status": "ok",
+ "problems": [],
+ "skeleton": "<C0>{0}<C8 80><C8 E0><C5><C8 3C><C0>{1}<C8 80><FF>",
  "runs": [
-  {"jp": "[0A][19]…", "es": "Hace trescientos años…", "max": {"type": 1, "rows": 2, "letters": 24}, "status": "draft"}
- ],
- "notes": ""
+  {"raw": "00 00 AB A8 A8 FD CB FD 60 9E 9E 9E", "jp": "　　３００年前・・・", "es": "", "status": "todo", "max": null}
+ ]
 }
 ```
 
-- A message is a **skeleton** of commands with numbered holes plus the **runs** of text that fill them. The translator edits only `es`; the commands, their order and their arguments are never retyped, so a waiting time or an effect cannot be damaged by a translation.
-- `jp` is the original run decoded with the glyph table. A glyph that is not in the table is written `[0A]` and a kanji `[FD CB]`; a command in the skeleton is written `<C8 80>`. All of them round-trip.
-- Leading and trailing spaces belong to the text. Entries that decode as text but are data (a magic string the code compares) are marked `"status": "data"` and are not translated.
+- The `id` is the address of the blob. `slots` lists the pointer slots (`table#index`) that point to it: several slots can share one blob (the one-byte `FF` blob). `size` is its length in bytes.
+- A message is a **skeleton** of commands (`<hex>` tokens) with numbered holes `{n}` plus the **runs** of text that fill them. The translator edits only `es`; the commands, their order and their arguments are never retyped, so a waiting time or an effect cannot be damaged by a translation.
+- A run is a sequence of glyphs with line breaks (`C3`, written `
+`) and indents (`E5 nn`, written `<E5 02>`) between them, with at least one visible glyph. `raw` is the original bytes and the source of truth; `jp` is derived from it with the glyph table (a glyph with no character is written `[40]`, and a glyph whose character is shared with another is written `[FA 2A]`) and parses back to `raw`.
+- Leading and trailing spaces belong to the text. Entries that decode as text but are data (a magic string the code compares) will be marked `"status": "data"` and are not translated.
+- `status` of an entry is `ok` or `review`; `problems` says why (no terminator, a gap before the next blob, commands of unknown length, a run right after `FE` or `E8`). A `review` entry is extracted but not rewritten until it is resolved.
 - `max` is the budget of the run's window and is filled by stage 3 (`measured`) or by the type's known size (`guess`); a run with no budget cannot be marked `done`.
-- A message that several ids share (the one-byte `FF` blob) is one entry with a list of the ids that point to it.
+- Regenerating with `--force` keeps `es`, `status` and `max` of every run whose `raw` is unchanged and refuses to overwrite a file without it.
 
 ## Spanish Encoding
 

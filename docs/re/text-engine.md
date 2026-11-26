@@ -55,7 +55,7 @@ Argument counts were measured with a forced-execution probe: the byte `cmd, 01 0
 | `DE`-`E2` | 3 | measured | |
 | `E4`, `E5`, `E9`, `EA`, `EB`, `EF`, `F6` | 1 | measured | |
 | `E6` | 2 | **guess** | Blocks; rare. |
-| `E8` | variable | **unknown** | Reads one argument, then more depending on its value. Appears at the end of blobs: `E8 05 3D 00 3A 00`. |
+| `E8` | variable | **unknown** | Reads one argument, then more depending on its value (values `00`, `05` and `FF` appear in the data). Appears at the end of blobs: `E8 05 3D 00 3A 00`. |
 | `EC`, `ED` | 0 | **guess** | `ED` is nearly absent from the data. |
 | `EE` | 2 | measured | Calls message `nnnn` (16-bit id): resolves it through the area record (below) and pushes a new level on the pointer stack. |
 | `F0` | 0 | corpus | Ends the blob (a one-byte blob `F0` exists). |
@@ -64,7 +64,7 @@ Argument counts were measured with a forced-execution probe: the byte `cmd, 01 0
 | `F3` | 2 | corpus | `F3 01 00 FF`. |
 | `F5` | 0 | measured | |
 | `F7`, `F8`, `F9` | n/a | measured | The dispatcher loops on them without consuming bytes: they appear to be invalid and never used (**guess**). |
-| `FE` | variable | **unknown** | Two arguments in the probe, but `FE 14 FF` appears as a complete blob in the global table, so the length depends on the first argument (a sub-command). |
+| `FE` | variable | **read from the code**, lengths unknown | A sub-dispatcher: its handler at `$D1:0C11` reads one byte `v`, stores `v + 0x40` in `$0AC5` and jumps back into the command dispatcher, so each `FE v` is an extended command with its own handler and argument count. The probe gave two arguments for `FE 01`, but `FE 14 FF` is a complete 3-byte blob in the global table (1 argument), and `tools/probe_command_arity.py --command FE --first-args corpus` showed that the count also changes with the argument values (`FE 08` took 5 argument bytes with zeros and blocked with `01 02 03...`). 60 distinct `v` appear in the data. Not resolved. |
 | `FF` | 0 | corpus | Ends the blob (scripts and narration). |
 
 A blob ends at the first `C2` (after its 4 arguments), `C7`, `F0`, or `FF` that is read as a command.
@@ -124,10 +124,20 @@ Status: **verified**.
 
 Booted from reset in MesenCE and driven with the same inputs (Start at the title, A at the menu), the original ROM shows `300年前・・・` in four captures between frames 1460 and 1620, and the probe ROM shows `300年前・・・・・・` with the sixth dot wrapped to the second row in the same four captures. In a separate run of the same route, after the first message the two ROMs reached identical screens at three later captures (about frames 1948, 2248, and 2548). This proves that the engine reads a blob from another place through the repointed table and that a longer text is accepted; it also shows that the narration window wraps on its own after 12 glyph slots (the blob starts with two blank glyphs and `300年前` plus six dots makes 13, so the thirteenth, the sixth dot, goes to the second row). An earlier version of this file said 11 per line; the draw tables in [latin-font-spike.md](latin-font-spike.md) show 12.
 
+## Extraction
+
+Status: **verified** by round trip, with the limits listed here. `tools/extract_script.py` turns every blob into an entry made of a skeleton (the commands, never edited) and text runs (what gets translated), see the header of the tool for the format.
+
+- 2797 distinct blobs; 2429 close exactly and have no doubtful command; 1874 hold text (5523 runs), 1524 of them without doubt.
+- By role, with the text entries that have no doubt: messages 1490 of 1551 (4532 of 4797 runs), event scripts 25 of 167, global table 8 of 126, called scripts 1 of 30. The event, global and called scripts are mostly commands; the "text" in them is arguments of `FE` and `E8` that the tokenizer reads as glyphs.
+- A run that comes right after an `FE` or `E8` is flagged for review, because those commands have a variable length and the run may be arguments. This is the main open question of the extraction (see Open Items 2).
+- Round trip: every entry rebuilds its bytes from the skeleton and the `raw` of its runs, and the readable `jp` of every run parses back to `raw`, for the whole ROM.
+- The dumped files (`text/`) hold the original Japanese text and are not committed.
+
 ## Open Items
 
 1. Glyph table: done for the 920 glyphs in use, see [glyph-table.md](glyph-table.md); four readings and the second reader are open.
-2. Measure the real argument counts of `CB`, `DA`, `DB`, `E6`, `E8`, `EC`, `ED`, and the sub-command lengths of `E8` and `FE`, then re-run the check. The remaining 199 blobs need this.
+2. Measure the real argument counts of `CB`, `DA`, `DB`, `E6`, `E8`, `EC`, `ED`, and the sub-command lengths of `E8` and `FE` (each `FE v` has its own handler, see the table above: read the handlers from the extended table or measure them with values that do not change the path), then re-run the check. The remaining 199 blobs need this, and so do the 350 flagged text entries of the extraction.
 3. Find every reader of the pointer tables (code that builds addresses from immediates), and confirm that no code reads a blob by absolute address, before moving blobs for real.
 4. Verify free space with trap bytes across a long route; until then use only the ranges needed.
 5. Analyze the paths that draw other text (menus, items, battle, names).
